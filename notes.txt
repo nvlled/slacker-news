@@ -1,0 +1,18 @@
+uhh, how much work would it be to get a basic HN clone running?
+- setup a database, sqlite would probably be fine
+- account management (login, users, admins)
+- posts and threads
+- post feeds
+- anti-spam
+- web interface
+
+I should do the interface first, that's the easiest one,
+at least that achieves my minimum goal of demonstrating
+lua as a viable templating engine.
+
+And as a side TODO, I should do a proper alternative 
+go implementation to moon-temple, drop-in replacement
+fully compatible with the redbean runtime.
+Why? It's easier to have a dev setup with the go tooling,
+and I get a proper filesystem monitoring. But the redbean
+runtime stays.
