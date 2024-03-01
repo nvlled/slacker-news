@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"runtime/debug"
 	"strings"
@@ -13,12 +15,21 @@ import (
 	luar "layeh.com/gopher-luar"
 )
 
+func respondInternalError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintf(w, "error: %v", err)
+	log.Print(err)
+	debug.PrintStack()
+}
+
 func handleServeLuaPage(
 	config Config,
 	fsys fs.FS,
 ) http.Handler {
 	initState := *initLuaState(fsys)
+	pageDir := http.FileServer(http.Dir("./pages"))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		var L *lua.LState
 		if config.DevMode {
 			L = initLuaState(fsys)
@@ -33,31 +44,58 @@ func handleServeLuaPage(
 
 		r.ParseForm()
 		L.SetGlobal("form", luar.New(L, r.Form))
+		L.SetGlobal("request", luar.New(L, r))
+		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
 		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
 
 		pagePath := path.Clean(r.URL.Path)
 
-		filename := path.Join("pages", pagePath)
-		if !strings.HasSuffix(filename, ".lua") {
+		var filename string
+		if pagePath == "/" {
+			filename = path.Join("pages", "index.lua")
+		} else {
+			filename = path.Join("pages", pagePath)
+		}
+
+		stat, err := os.Stat(filename)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			respondInternalError(w, err)
+			return
+		}
+
+		if stat != nil && stat.IsDir() {
+			filename = path.Join(filename, "index.lua")
+		} else if !strings.HasSuffix(filename, ".lua") {
 			filename += ".lua"
 		}
 
-                // TODO: replace with pages/index.lua with actual path
-		if err := DoFile(L, fsys, "pages/index.lua"); err != nil {
-			fmt.Fprintf(w, "error: %v", err)
-			log.Print(err)
-			debug.PrintStack()
-		} else {
-			lv := L.Get(-1)
-			if err := L.CallByParam(lua.P{
-				Fn:      L.GetGlobal("tostring"),
-				NRet:    1,
-				Protect: true,
-			}, lv); err != nil {
-				panic(err)
-			}
-			ret := L.Get(-1)
-			fmt.Fprintf(w, ret.String())
+
+		if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+			pageDir.ServeHTTP(w, r)
+			return
+		}
+
+		if err := DoFile(L, fsys, filename); err != nil {
+			respondInternalError(w, err)
+			return
+		}
+		lv := L.Get(-1)
+		if err := L.CallByParam(lua.P{
+			Fn:      L.GetGlobal("tostring"),
+			NRet:    1,
+			Protect: true,
+		}, lv); err != nil {
+			respondInternalError(w, err)
+			return
+		}
+
+		ret := L.Get(-1)
+
+		//fmt.Fprintf(w, ret.String()) // % is actually parsed...
+		_, err = w.Write([]byte(ret.String()))
+		if err != nil {
+			respondInternalError(w, err)
+			return
 		}
 	})
 }
@@ -94,7 +132,7 @@ func initLuaState(fsys fs.FS) *lua.LState {
 	if err := DoFile(L, fsys, "lua/loader.lua"); err != nil {
 		panic(err)
 	}
-	if err := DoFile(L, fsys, "pages/init.lua"); err != nil {
+	if err := DoFile(L, fsys, "includes/init.lua"); err != nil {
 		panic(err)
 	}
 
@@ -113,8 +151,8 @@ func DoFile(
 
 	source := string(bytes)
 
-        // TODO: cache fn on PROD
-        // fn.Env
+	// TODO: cache fn on PROD
+	// fn.Env
 
 	if fn, err := L.Load(strings.NewReader(source), filename); err != nil {
 		return err

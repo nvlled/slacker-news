@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -41,9 +42,12 @@ func (dw *DirWatcher) Start() {
 				if !ok {
 					return
 				}
+				if !(event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
+					continue
+				}
 
-				if path.Ext(event.Name) == ".lua" && (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
-					print("changed", event.Name)
+				ext := path.Ext(event.Name)
+				if ext == ".lua" || ext == ".go" || strings.HasPrefix(event.Name, "pages/") {
 					log.Println("event:", event, path.Ext(event.Name))
 					dw.notify()
 				}

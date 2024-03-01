@@ -16,6 +16,10 @@ function P.dirPath(path)
     return path:sub(1, i - 2), path:sub(i)
 end
 
+function P.isEmptyString(str)
+    return not str or str == ""
+end
+
 function P.relativePath(targetPath, srcPath)
     if targetPath:sub(1, 1) ~= "/" or not srcPath or srcPath == "" then
         return targetPath

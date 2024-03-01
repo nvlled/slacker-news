@@ -1,6 +1,12 @@
 local siteName = "slacker news"
 
-return function(args)
+local style = {
+    bgColor = "#1d1f21 none",
+    textColor = "#c5c8c6",
+    linkColor = "#5f89ac",
+}
+
+local function LAYOUT(args)
     local props, children = GetComponentArgs(args)
     if not props.style then props.style = {} end
 
@@ -16,15 +22,21 @@ return function(args)
             },
         },
         CSS "#site-logo" {
-            font_size = 20,
+            font_size = "1.4rem",
             padding = 10,
             display = "inline-block",
-            border = "2px solid white",
+            border = "3px solid #484a4e",
+            CSS "a" {
+                color = "inherit",
+                text_decoration = "none",
+            },
         },
         CSS "#site-name" {
             display = "inline-block",
             font_weight = "800",
-            font_size = 28,
+            font_size = "1.4rem",
+            text_decoration = "none",
+            color = "inherit",
         },
         CSS "#site-menu, #account-info" {
             display = "flex",
@@ -33,7 +45,7 @@ return function(args)
                 {
                     margin = 0,
                     list_style_type = "none",
-                    border_right = "1px solid white",
+                    border_right = "1px solid #484a4e",
                     padding = "0 10px",
                     border_collapse = "collapse",
                 },
@@ -68,9 +80,9 @@ return function(args)
             id = "site-nav",
             DIV {
                 id = "site-logo",
-                "X"
+                A { href = "/", "𐲤" }
             },
-            SPAN { id = "site-name", siteName },
+            A { id = "site-name", href = "/", siteName },
             menu,
             account,
         },
@@ -79,7 +91,6 @@ return function(args)
     local body = DIV {
         id = "wrapper",
         navigation,
-        HR,
         DIV {
             children
         },
@@ -87,17 +98,34 @@ return function(args)
 
     return HTML {
         HEAD {
-            TITLE(props.title or "*"),
+            TITLE((props.title and props.title .. " | " or "") .. siteName),
             props.style and STYLE(props.style),
             STYLE {
+                CSS "html" {
+                    font_size = "100%",
+                },
                 CSS "body" {
-                    background = "#111",
-                    color = "#eee",
-                    font_size = 24,
+                    background = style.bgColor,
+                    color = style.textColor,
                 },
                 CSS "#wrapper" {
-                    max_width = 1024,
                     margin = "auto",
+                },
+                CSS_MEDIA '(width >= 1000px) or (orientation: landscape)' {
+                    CSS "html" {
+                        font_size = "120%",
+                    },
+                    CSS "#wrapper" {
+                        max_width = "1000px",
+                        width = "100%",
+                        margin = "auto",
+                    },
+                    CSS "#site-menu" {
+                        display = "none"
+                    },
+                },
+                CSS "a" {
+                    color = style.linkColor,
                 },
             },
             not props.noAutoReload and SCRIPT [[
@@ -115,3 +143,12 @@ return function(args)
 
     }
 end
+
+
+return setmetatable({
+    layout = LAYOUT,
+    style = style,
+
+}, {
+    __call = function(self, args) return LAYOUT(args) end
+})

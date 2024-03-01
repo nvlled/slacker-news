@@ -1,6 +1,9 @@
-local LAYOUT = require "layout"
+local LAYOUT, style = require "layout"
 
-local items, err = go:GetTopStories(10, 0)
+local page = tonumber(form:Get("page")) or 1
+local pageSize = 30
+
+local items, err, hasMore = go:GetTopStories(pageSize, page - 1)
 
 if err ~= nil then
     return LAYOUT {
@@ -10,18 +13,30 @@ if err ~= nil then
 end
 
 
+local style = {
+    CSS 'ol li' {
+        margin_bottom = 5,
+    },
+    CSS 'ol a' {
+        text_decoration = "none",
+    },
+}
+
 local list = {}
 
 for _, item in items() do
     print(item.Title)
     table.insert(list, LI {
-        item.Title
+        A { href = "/item?id=" .. tostring(item.ID), item.Title },
+        SMALL { " ", item.Descendants, " comments" },
     })
 end
 
 return LAYOUT {
-    noAutoReload = true,
-    UL {
+    STYLE(style),
+    OL {
+        start = (page - 1) * pageSize + 1,
         list
-    }
+    },
+    hasMore and A { href = "/index?page=" .. page + 1, "more" }
 }

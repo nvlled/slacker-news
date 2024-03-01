@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 )
 
 func handleAutoReloadPage(dirWatcher *DirWatcher) http.Handler {
@@ -20,15 +19,15 @@ func handleAutoReloadPage(dirWatcher *DirWatcher) http.Handler {
 		dirWatcher.AddLuaListener(&fn)
 		defer dirWatcher.RemoveListener(&fn)
 
-		running := true
-		go func() {
-			for running {
-				time.Sleep(5 * time.Second)
-				fmt.Fprintf(w, "event:ping\n\n")
-			}
-		}()
+		//running := true
+		//go func() {
+		//	for running {
+		//		time.Sleep(5 * time.Second)
+		//		fmt.Fprintf(w, "event:ping\n\n")
+		//	}
+		//}()
 
 		<-r.Context().Done()
-		running = false
+		//running = false
 	})
 }

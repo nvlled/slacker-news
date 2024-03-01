@@ -26,6 +26,7 @@ local function cssToString(ruleset)
         if not rule or rule.selector == "" or ext.len(rule.declarations) == 0 then
             goto continue
         end
+
         table.insert(buffer, trim(rule.selector) .. " {\n")
 
         for _, e in ipairs(sortTable(rule.declarations)) do

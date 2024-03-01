@@ -126,8 +126,10 @@ nodeMeta = {
 }
 
 local function _node(tagName, args, options)
+    options = options or {}
+
     if type(args) == "string" then
-        local result = { tag = tagName, attrs = {}, children = { args }, options = options or {} }
+        local result = { tag = tagName, attrs = {}, children = { args }, options = options  }
         setmetatable(result, nodeMeta)
         return result
     end
@@ -141,7 +143,11 @@ local function _node(tagName, args, options)
 
     for k, v in pairs(args) do
         if type(k) == "string" then
-            attrs[k] = v
+            if k:sub(1, 2) == "__" then
+                options[k:sub(3)] = v
+            else
+                attrs[k] = v
+            end
         elseif type(k) == "number" then
             if type(v) == "string" then
                 table.insert(children, v)
@@ -156,9 +162,10 @@ local function _node(tagName, args, options)
                     table.insert(children, tostring(v))
                 else
                     for _, elem in ipairs(v) do
+                        local mt2 = getmetatable(elem)
                         if getmetatable(elem) == nodeMeta then
                             table.insert(children, elem)
-                        elseif type(elem) == "function" or getmetatable(elem).__call then
+                        elseif type(elem) == "function" or (mt2 and mt2.__call) then
                             table.insert(children, elem())
                         else
                             table.insert(children, elem)
@@ -174,7 +181,7 @@ local function _node(tagName, args, options)
         end
     end
 
-    local result = { tag = tagName, attrs = attrs, children = children, options = options or {} }
+    local result = { tag = tagName, attrs = attrs, children = children, options = options }
     setmetatable(result, nodeMeta)
 
     return result
