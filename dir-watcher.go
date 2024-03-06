@@ -1,18 +1,18 @@
 package main
 
 import (
-	"errors"
 	"io/fs"
 	"log"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 type DirWatcher struct {
+	mu        sync.Mutex
 	listeners map[*func()]struct{}
 }
 
@@ -23,12 +23,6 @@ func NewDirwatcher() *DirWatcher {
 }
 
 func (dw *DirWatcher) Start() {
-	// TODO: check dev flag instead
-	if _, err := os.Stat("pages"); errors.Is(err, os.ErrNotExist) {
-		println("dir watcher not started")
-		return
-	}
-
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -47,7 +41,7 @@ func (dw *DirWatcher) Start() {
 				}
 
 				ext := path.Ext(event.Name)
-				if ext == ".lua" || ext == ".go" || strings.HasPrefix(event.Name, "pages/") {
+				if ext == ".lua" /*|| ext == ".go"*/ || strings.HasPrefix(event.Name, "pages/") {
 					log.Println("event:", event, path.Ext(event.Name))
 					dw.notify()
 				}
@@ -65,7 +59,7 @@ func (dw *DirWatcher) Start() {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
+		if info.IsDir() && filename != ".git" && !strings.HasPrefix(filename, ".git/") {
 			println("watching", filename)
 			err = watcher.Add(filename)
 			if err != nil {
@@ -77,14 +71,19 @@ func (dw *DirWatcher) Start() {
 }
 
 func (dw *DirWatcher) notify() {
-	for fn := range dw.listeners {
+	listeners := dw.listeners
+	for fn := range listeners {
 		(*fn)()
 	}
 }
 
 func (dw *DirWatcher) AddLuaListener(fn *func()) {
+	dw.mu.Lock()
 	dw.listeners[fn] = struct{}{}
+	dw.mu.Unlock()
 }
 func (dw *DirWatcher) RemoveListener(fn *func()) {
+	dw.mu.Lock()
 	delete(dw.listeners, fn)
+	dw.mu.Unlock()
 }

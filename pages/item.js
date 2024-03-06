@@ -42,7 +42,24 @@ function isVisibleInViewport(node) {
 
     return true;
 
-    console.log(rect)
+}
+
+// `navigator.userAgentData.mobile` doesn't work on my phone so...
+function detectMobile() {
+    // Source: https://stackoverflow.com/a/11381730
+    const toMatch = [
+        /Android/i,
+        /webOS/i,
+        /iPhone/i,
+        /iPad/i,
+        /iPod/i,
+        /BlackBerry/i,
+        /Windows Phone/i
+    ];
+
+    return toMatch.some((toMatchItem) => {
+        return navigator.userAgent.match(toMatchItem);
+    });
 }
 
 window.onhashchange = highlightAnchoredPost;
@@ -50,11 +67,17 @@ window.onhashchange = highlightAnchoredPost;
 window.onload = function() {
     highlightAnchoredPost();
 
+    const isMobile = detectMobile()
+
     for (const link of document.querySelectorAll("a.post-link")) {
         removeHighlightedPost();
 
         const m = link.href.match(/#.*$/)
         const idFrag = m && m[0];
+
+        if ((isMobile)) {
+            link.onclick = function(e) { e.preventDefault(); }
+        }
 
         let popup;
         link.onmouseover = function() {
@@ -63,66 +86,51 @@ window.onload = function() {
             const winW = window.innerWidth;
             const winH = window.innerHeight;
 
-
-            if (winW < 1000) return;
-
             if (idFrag) {
                 const post = document.querySelector(idFrag);
                 highlightPost(post);
                 if (isVisibleInViewport(post)) {
-                    console.log("visible", post);
                     return;
                 }
 
-                console.log("not visible");
 
                 if (post) {
                     popup = post.cloneNode(true)
                     popup.classList.add("popup");
                     popup.classList.remove("selected");
-
-                    if (link.classList.contains("reply")) {
-                        link.parentNode.parentNode.appendChild(popup);
-                    } else {
-                        link.parentNode.appendChild(popup);
-                    }
+                    document.querySelector("#thread").appendChild(popup)
 
                     const linkRect = link.getBoundingClientRect();
                     const postRect = popup.getBoundingClientRect();
-
-
-                    const topOffset = (linkRect.top+linkRect.height/2) / winH
-                    const leftOffset = (linkRect.left+linkRect.height/2) / winW
-
+                    const topOffset = (linkRect.top + linkRect.height / 2) / winH
+                    const leftOffset = (linkRect.left + linkRect.height / 2) / winW
 
                     let left = 0;
                     let top = 0;
 
                     if (leftOffset > 0.5) {
-                        left = (linkRect.x - postRect.width - 2)
+                        left = scrollX + linkRect.right - postRect.width;
+                        if (left + postRect.width >= winW) {
+                        }
+                        if (left < 0) {
+                            left = 0;
+                        }
                     } else {
-                        left = (linkRect.left + linkRect.width + 2)
+                        left = scrollX + linkRect.left
                     }
 
-                    if (left < 0) {
-                        left = 0;
-                    }
-                    if (left + postRect.width > winW) {
-                        left = winW - postRect.width + 2;
-                    }
 
                     if (topOffset > 0.5) {
-                        top = linkRect.top - postRect.height;
+                        top = scrollY + linkRect.top - postRect.height
                     } else {
-                        top = linkRect.bottom
+                        top = scrollY + linkRect.bottom
                     }
 
-                    if (top + postRect.height >= winH) {
-                        top = winH - postRect.height;
+                    if (top < scrollY) {
+                        top = scrollY
+                        popup.style.height = ((scrollY + linkRect.top) - scrollY - linkRect.height) + "px"
                     }
-                    if (top < 0) {
-                        top = 0;
-                    }
+
 
                     popup.style.left = left + "px"
                     popup.style.top = top + "px"
@@ -133,7 +141,6 @@ window.onload = function() {
         link.onmouseout = function() {
             removeHighlightedPost();
             if (popup) {
-                console.log(popup)
                 popup.remove();
                 popup = null;
             }

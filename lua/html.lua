@@ -237,6 +237,9 @@ P = Node "p"
 DIV = Node "div"
 SPAN = Node "span"
 
+DETAILS = Node "details"
+SUMMARY = Node "summary"
+
 B = Node "b"
 I = Node "i"
 EM = Node "em"

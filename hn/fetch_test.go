@@ -19,7 +19,6 @@ func (x *X) Foo() (*Item, error) {
 	return FetchItem(39533761)
 }
 
-// TODO:
 func TestFetchAndParseHTML(t *testing.T) {
 	os.Chdir("..")
 
@@ -110,7 +109,7 @@ func TestFetch(t *testing.T) {
 }
 
 func TestFetchTopStories(t *testing.T) {
-	items, err := FetchTopStories(10, 1)
+	items, err, _ := FetchTopStories(10, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -145,4 +144,15 @@ func TestFetchThread(t *testing.T) {
 		println("------------------------------")
 	}
 	println("reply count", len(items))
+}
+
+func TestFetchCommentChain(t *testing.T) {
+	items, err := FetchCommentChain(39597030)
+	if err != nil {
+		t.Error(err)
+	}
+	for _, sub := range items {
+            println(">", sub.By, ":", sub.Text[0:min(50, len(sub.Text))])
+		println("------------------------------")
+	}
 }

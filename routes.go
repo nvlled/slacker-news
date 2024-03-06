@@ -10,8 +10,9 @@ func addRoutes(
 	mux *http.ServeMux,
 	fsys fs.FS,
 	dirWatcher *DirWatcher,
+        cacheManager *CacheManager,
 ) {
-	mux.Handle("/", handleServeLuaPage(config, fsys))
+	mux.Handle("/", handleServeLuaPage(config, fsys, cacheManager))
 
 	if config.DevMode {
 		mux.Handle("/.autoreload", handleAutoReloadPage(dirWatcher))

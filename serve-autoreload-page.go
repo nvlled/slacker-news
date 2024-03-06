@@ -16,16 +16,12 @@ func handleAutoReloadPage(dirWatcher *DirWatcher) http.Handler {
 			fmt.Fprintf(w, "event: fsevent\ndata: x\n\n")
 			w.(http.Flusher).Flush()
 		}
+
 		dirWatcher.AddLuaListener(&fn)
 		defer dirWatcher.RemoveListener(&fn)
 
-		//running := true
-		//go func() {
-		//	for running {
-		//		time.Sleep(5 * time.Second)
-		//		fmt.Fprintf(w, "event:ping\n\n")
-		//	}
-		//}()
+		fmt.Fprintf(w, "event:ping\n\n")
+		w.(http.Flusher).Flush()
 
 		<-r.Context().Done()
 		//running = false

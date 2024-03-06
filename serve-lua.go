@@ -10,6 +10,7 @@ import (
 	"path"
 	"runtime/debug"
 	"strings"
+	"sync"
 
 	lua "github.com/yuin/gopher-lua"
 	luar "layeh.com/gopher-luar"
@@ -25,28 +26,16 @@ func respondInternalError(w http.ResponseWriter, err error) {
 func handleServeLuaPage(
 	config Config,
 	fsys fs.FS,
+	cacheManager *CacheManager,
 ) http.Handler {
-	initState := *initLuaState(fsys)
-	pageDir := http.FileServer(http.Dir("./pages"))
+
+	var pageDir http.Handler
+	//pageDir = http.FileServer(http.Dir("./pages"))
+	pageDir = http.FileServer(http.FS(fsys))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		var L *lua.LState
-		if config.DevMode {
-			L = initLuaState(fsys)
-		} else {
-			copyState := initState
-			L = &copyState
-			if L == &initState {
-				panic("copy failed")
-			}
-		}
+		L := initLuaState(config, fsys)
 		defer L.Close()
-
-		r.ParseForm()
-		L.SetGlobal("form", luar.New(L, r.Form))
-		L.SetGlobal("request", luar.New(L, r))
-		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
-		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
 
 		pagePath := path.Clean(r.URL.Path)
 
@@ -57,7 +46,7 @@ func handleServeLuaPage(
 			filename = path.Join("pages", pagePath)
 		}
 
-		stat, err := os.Stat(filename)
+		stat, err := fsStat(fsys, filename)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			respondInternalError(w, err)
 			return
@@ -69,13 +58,19 @@ func handleServeLuaPage(
 			filename += ".lua"
 		}
 
-
-		if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+		if !fsExists(fsys, filename) {
+			r.URL.Path = path.Join("pages", r.URL.Path)
 			pageDir.ServeHTTP(w, r)
 			return
 		}
 
-		if err := DoFile(L, fsys, filename); err != nil {
+		r.ParseForm()
+		L.SetGlobal("form", luar.New(L, r.Form))
+		L.SetGlobal("request", luar.New(L, r))
+		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
+		L.SetGlobal("cm", luar.New(L, cacheManager))
+
+		if err := DoFile(L, config, fsys, filename); err != nil {
 			respondInternalError(w, err)
 			return
 		}
@@ -91,7 +86,6 @@ func handleServeLuaPage(
 
 		ret := L.Get(-1)
 
-		//fmt.Fprintf(w, ret.String()) // % is actually parsed...
 		_, err = w.Write([]byte(ret.String()))
 		if err != nil {
 			respondInternalError(w, err)
@@ -100,7 +94,10 @@ func handleServeLuaPage(
 	})
 }
 
-func initLuaState(fsys fs.FS) *lua.LState {
+func initLuaState(
+	config Config,
+	fsys fs.FS,
+) *lua.LState {
 	L := lua.NewState(lua.Options{SkipOpenLibs: true})
 
 	for _, pair := range []struct {
@@ -111,6 +108,7 @@ func initLuaState(fsys fs.FS) *lua.LState {
 		{lua.BaseLibName, lua.OpenBase},
 		{lua.TabLibName, lua.OpenTable},
 		{lua.StringLibName, lua.OpenString},
+		{lua.OsLibName, lua.OpenOs},
 	} {
 		if err := L.CallByParam(lua.P{
 			Fn:      L.NewFunction(pair.f),
@@ -129,18 +127,27 @@ func initLuaState(fsys fs.FS) *lua.LState {
 		return string(file), nil
 	}))
 
-	if err := DoFile(L, fsys, "lua/loader.lua"); err != nil {
+	if err := DoFile(L, config, fsys, "lua/loader.lua"); err != nil {
 		panic(err)
 	}
-	if err := DoFile(L, fsys, "includes/init.lua"); err != nil {
+	if err := DoFile(L, config, fsys, "includes/init.lua"); err != nil {
 		panic(err)
 	}
 
 	return L
 }
 
+var modCache = struct {
+	mu sync.Mutex
+	m  map[string]*lua.LFunction
+}{
+	mu: sync.Mutex{},
+	m:  map[string]*lua.LFunction{},
+}
+
 func DoFile(
 	L *lua.LState,
+	config Config,
 	fsys fs.FS,
 	filename string,
 ) error {
@@ -151,13 +158,31 @@ func DoFile(
 
 	source := string(bytes)
 
-	// TODO: cache fn on PROD
-	// fn.Env
+	var fn *lua.LFunction
+	var ok bool
 
-	if fn, err := L.Load(strings.NewReader(source), filename); err != nil {
-		return err
-	} else {
-		L.Push(fn)
-		return L.PCall(0, lua.MultRet, nil)
+	if !config.DevMode {
+		modCache.mu.Lock()
+		fn, ok = modCache.m[filename]
+		modCache.mu.Unlock()
 	}
+
+	if !ok || fn == nil {
+		if fn, err = L.Load(strings.NewReader(source), filename); err != nil {
+			return err
+		}
+
+		if !config.DevMode {
+			modCache.mu.Lock()
+			modCache.m[filename] = fn
+			modCache.mu.Unlock()
+		}
+	}
+
+	g := L.NewFunctionFromProto(fn.Proto)
+
+	L.Push(g)
+	err = L.PCall(0, lua.MultRet, nil)
+
+	return err
 }

@@ -18,4 +18,9 @@ type Item struct {
 	Title       string   `json:"title"`
 	Parts       []int    `json:"parts"`
 	Descendants int      `json:"descendants"`
+
+
+        // Added non HN fields
+        Level uint
+        ParentItem *Item
 }

@@ -22,7 +22,6 @@ local function LAYOUT(args)
             },
         },
         CSS "#site-logo" {
-            font_size = "1.4rem",
             padding = 10,
             display = "inline-block",
             border = "3px solid #484a4e",
@@ -34,7 +33,6 @@ local function LAYOUT(args)
         CSS "#site-name" {
             display = "inline-block",
             font_weight = "800",
-            font_size = "1.4rem",
             text_decoration = "none",
             color = "inherit",
         },
@@ -68,10 +66,13 @@ local function LAYOUT(args)
     }
 
     local account = DIV {
-        not user and A { href = "/login", "login" } or DIV {
+        DIV {
             id = "account-info",
-            LI ^ A { href = "/user?id=" .. user.ID, user.Username },
-            LI ^ A { href = "logout", "logout" },
+            not user and LI ^ A { href = "/login", "login" }
+            or FRAGMENT {
+                LI ^ A { href = "/user?id=" .. user.ID, user.Username },
+                LI ^ A { href = "logout", "logout" },
+            },
         }
     }
 
@@ -88,9 +89,8 @@ local function LAYOUT(args)
         },
     }
 
-    local body = DIV {
+    local contents = DIV {
         id = "wrapper",
-        navigation,
         DIV {
             children
         },
@@ -98,7 +98,7 @@ local function LAYOUT(args)
 
     return HTML {
         HEAD {
-            TITLE((props.title and props.title .. " | " or "") .. siteName),
+            TITLE((not Xt.isEmptyString(props.title) and props.title .. " | " or "") .. siteName),
             props.style and STYLE(props.style),
             STYLE {
                 CSS "html" {
@@ -107,21 +107,28 @@ local function LAYOUT(args)
                 CSS "body" {
                     background = style.bgColor,
                     color = style.textColor,
+                    text_size_adjust = "none"
                 },
                 CSS "#wrapper" {
                     margin = "auto",
+                    width = "100%",
+                    font_size = "100%",
                 },
-                CSS_MEDIA '(width >= 1000px) or (orientation: landscape)' {
+
+                CSS_MEDIA '(orientation: portrait)' {
                     CSS "html" {
-                        font_size = "120%",
+                        font_size = "160%",
+                    }
+                },
+
+                CSS_MEDIA '(orientation: landscape)' {
+                    CSS "html" {
+                        font_size = "100%",
                     },
                     CSS "#wrapper" {
-                        max_width = "1000px",
+                        max_width = "800px",
                         width = "100%",
                         margin = "auto",
-                    },
-                    CSS "#site-menu" {
-                        display = "none"
                     },
                 },
                 CSS "a" {
@@ -130,16 +137,41 @@ local function LAYOUT(args)
             },
             not props.noAutoReload and SCRIPT [[
             (function() {
+                var disconnected = false;
                 var evtSource = new EventSource("/.autoreload");
                 evtSource.addEventListener("fsevent", function(event) {
-                    //console.log("reload");
                     window.location.reload();
                 });
+                evtSource.onopen = function() {
+                    console.log("open", {disconnected});
+                    if (disconnected) {
+                        window.location.reload();
+                    }
+                }
+                evtSource.onerror = function() {
+                    disconnected = true;
+                }
+
+                console.log({evtSource});
                 window.addEventListener("unload", function() { evtSource.close(); })
             })();
             ]]
         },
-        BODY(body),
+
+        BODY {
+            navigation,
+            contents,
+            DIV {
+                style = "text-align: center; margin-top: 20px",
+                SMALL ^ I {
+                    I "NOTE: site is freezed and cached on ",
+                    os.date("%d %b %H:%M", cm.LastUpdate),
+                    SPAN {
+                        ". Next update will be at ", os.date("%H:%M", cm:GetNextUpdate()),
+                    }
+                }
+            }
+        },
 
     }
 end
