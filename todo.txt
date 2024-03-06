@@ -1,0 +1,18 @@
+
+- create systemd service, and maybe use nginx
+
+- try fengari lua
+
+- merge changes on html.lua/css.lua to moon-temple
+
+- I should probably just use sqlite for the caches
+
+
+- add [source] link
+- add input box at top
+  |enter HN id or url|
+- rewrite hn item links to local site links
+
+- try go-webui
+
+- HN login
