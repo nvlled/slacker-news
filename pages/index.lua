@@ -25,7 +25,6 @@ local style = {
 local list = {}
 
 for _, item in items() do
-    print(item.Title)
     table.insert(list, LI {
         A { href = "/item?id=" .. tostring(item.ID), item.Title },
         SMALL { " ", item.Descendants, " comments" },

@@ -165,7 +165,6 @@ func FetchThread(opID ItemID) ([]*Item, error) {
 	go func() {
 		for entry := range queue {
 			id, level := entry.id, entry.level
-			println("fetch", id)
 			go func() {
 				defer wg.Done()
 				item, err := FetchItem(id)
@@ -180,7 +179,6 @@ func FetchThread(opID ItemID) ([]*Item, error) {
 				mu.Unlock()
 
 				for _, subID := range item.Kids {
-					println("queue", subID)
 					subID := subID
 					wg.Add(1)
 					go func() { queue <- Entry{subID, level + 1} }()
@@ -189,7 +187,6 @@ func FetchThread(opID ItemID) ([]*Item, error) {
 		}
 	}()
 
-	println("fetch", opID)
 	op, err := FetchItem(opID)
 	if err != nil {
 		return nil, err
@@ -197,7 +194,6 @@ func FetchThread(opID ItemID) ([]*Item, error) {
 
 	for _, subID := range op.Kids {
 		subID := subID
-		println("queue", subID)
 		wg.Add(1)
 		go func() { queue <- Entry{subID, 1} }()
 	}
