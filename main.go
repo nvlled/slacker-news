@@ -23,9 +23,9 @@ func main() {
 	var config = Config{DevMode: isDevMode}
 	dirWatcher := NewDirwatcher()
 	cacheManager := NewCacheManager()
+	bindAddr = ":8080"
 
 	if !isDevMode {
-		bindAddr = ":7777"
 		fsys = embeddedFiles
 
 		binpath, err := os.Executable()
@@ -34,7 +34,6 @@ func main() {
 		}
 		os.Chdir(path.Dir(binpath))
 	} else {
-		bindAddr = ":8080"
 		d := os.DirFS(".")
 
 		dirWatcher.Start()

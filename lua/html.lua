@@ -393,8 +393,6 @@ function PP(args)
     return setmetatable(frag, ppMeta)
 end
 
-print("html imported")
-
 return {
     Node = Node,
 }

@@ -1,3 +1,6 @@
+- add about page
+- home page: put N comments below the post title
+  - add more vertical spacing
 
 - create systemd service, and maybe use nginx
 

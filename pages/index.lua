@@ -5,7 +5,7 @@ local pageSize = 30
 
 local items, err, hasMore = go:GetTopStories(pageSize, page - 1)
 
-if err ~= nil then
+if not Xt.isEmptyString(err) then
     return LAYOUT {
         H1 "error: failed to fetch data",
         I { err },

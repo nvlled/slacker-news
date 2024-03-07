@@ -4,10 +4,10 @@ local id = tonumber(form:Get("id"))
 local items, err = go:GetThread(id)
 
 
-if err ~= nil then
+if not Xt.isEmptyString(err) then
     return LAYOUT {
         H1 "error: failed to fetch data",
-        I { type(err) == "userdata" and err() or err },
+        I { err },
     }
 end
 
@@ -161,7 +161,7 @@ local commentChain = {}
 if op and op.Type == "comment" and op.Parent then
     local chain, err = go:GetCommentChain(op.Parent)
 
-    if err ~= nil then
+    if not Xt.isEmptyString(err) then
         return LAYOUT {
             H1 "error: failed to fetch data",
             I { type(err) == "userdata" and err() or err },
@@ -254,7 +254,7 @@ end
 for i, item in items() do
     local node
 
-    if i ==2 then
+    if i == 2 then
         table.insert(list, DIV {
             BR,
             EM "comments"
