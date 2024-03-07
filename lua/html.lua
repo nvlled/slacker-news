@@ -1,5 +1,4 @@
 local ext = require("ext")
-local markdown = require("markdown")
 
 local ppMeta
 local ctorMeta
@@ -129,7 +128,7 @@ local function _node(tagName, args, options)
     options = options or {}
 
     if type(args) == "string" then
-        local result = { tag = tagName, attrs = {}, children = { args }, options = options  }
+        local result = { tag = tagName, attrs = {}, children = { args }, options = options }
         setmetatable(result, nodeMeta)
         return result
     end
@@ -290,21 +289,6 @@ TRACK = Node("track", { selfClosing = true })
 SOURCE = Node("source", { selfClosing = true })
 
 FRAGMENT = Node ""
-
-MD = Node("", {
-    tostring = function(node)
-        local str = trim(table.concat(node.children, ""))
-        local lines = {}
-        for line in ext.split(str, "\n") do
-            line = trim(line)
-            if line:sub(1, 2) == "| " then
-                line = "    " .. line:sub(3)
-            end
-            table.insert(lines, line)
-        end
-        return markdown(table.concat(lines, "\n"))
-    end
-})
 
 ppMeta = {
     __div = function(a, b)

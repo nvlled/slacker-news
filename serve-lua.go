@@ -124,9 +124,6 @@ func initLuaState(
 		panic(err)
 	}
 
-	if err := DoFile(L, modules, fsys, "lua/loader.lua"); err != nil {
-		panic(err)
-	}
 	if err := DoFile(L, modules, fsys, "includes/init.lua"); err != nil {
 		panic(err)
 	}
@@ -148,12 +145,10 @@ func DoFile(
 	source := string(bytes)
 
 	if proto, ok := modules[filename]; ok {
-		println("loaded compiled module", filename)
 		fn := L.NewFunctionFromProto(proto)
 		L.Push(fn)
 		return L.PCall(0, lua.MultRet, nil)
 	} else {
-		println("loaded module", filename)
 		fn, err := L.Load(strings.NewReader(source), filename)
 		if err != nil {
 			return err

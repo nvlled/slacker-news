@@ -11,11 +11,16 @@ if not Xt.isEmptyString(err) then
     }
 end
 
+--[[
+local style = module("item.css.lua", function(args)
+
+end
+STYLE{
+    style()
+}
+--]]
+
 local style = STYLE {
-    --CSS ".post-link.reply" { display = "none" },
-    --CSS_MEDIA '(min-width: 1250px)' {
-    --    CSS ".post-link.reply" { display = "inline-block" },
-    --},
     CSS_MEDIA '(orientation: portrait)' {
         CSS ".post.popup" {
             max_width = '80vw !important',
