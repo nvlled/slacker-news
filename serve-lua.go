@@ -111,6 +111,7 @@ func initLuaState(
 		{lua.BaseLibName, lua.OpenBase},
 		{lua.TabLibName, lua.OpenTable},
 		{lua.StringLibName, lua.OpenString},
+		{lua.MathLibName, lua.OpenMath},
 		{lua.OsLibName, lua.OpenOs},
 	} {
 		if err := L.CallByParam(lua.P{

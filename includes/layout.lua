@@ -69,17 +69,24 @@ local function LAYOUT(args)
             margin = "auto",
             width = "100%",
             font_size = "100%",
-            max_width=720,
+                max_width = "720px !important",
         },
 
-        CSS_MEDIA '(max-width: 800px)' {
-            CSS "#site-name" { display = "none !important" },
+        CSS_MEDIA '(max-width: 1000px)' {
+            CSS "#wrapper" {
+                max_width = "unset !important",
+            }
         },
-
 
         CSS_MEDIA '(orientation: portrait)' {
             CSS "html" {
-                font_size = "160%",
+                font_size = "200%",
+            },
+            CSS "#wrapper" {
+                max_width = "unset !important",
+            },
+            CSS "#site-name, #site-menu" {
+                display="none"
             },
         },
 
@@ -98,12 +105,15 @@ local function LAYOUT(args)
         },
 
         CSS "#footer-notice" {
+            padding = 2,
             font_size = ".7rem",
-            text_align = "center",
+            width = "100%",
             margin_top = 20,
+            text_align = "right",
             position = "fixed",
             bottom = 0,
-            left = 0,
+            right = 0,
+            CSS "i" { background = style.bgColor },
         },
     })
 
@@ -183,8 +193,10 @@ window.addEventListener("unload", function() { evtSource.close(); })
             DIV {
                 id = "footer-notice",
                 SMALL ^ I {
-                    I "NOTE: showing cached content, next update will be in ",
-                    os.difftime(cm:GetNextUpdate(), os.time()) / 60,
+                    "NOTE: showing cached content from ",
+                    math.floor(os.difftime(os.time(), cm.LastUpdate) / 60),
+                    " minutes ago, next update will be in ",
+                    math.floor(os.difftime(cm:GetNextUpdate(), os.time()) / 60),
                     " minutes",
                 }
             }
