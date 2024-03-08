@@ -1,8 +1,12 @@
-- add about page
-- home page: put N comments below the post title
-  - add more vertical spacing
 
-- create systemd service, and maybe use nginx
+- add about page
+
+- move bigger stylesheets to a file and add an etag
+
+
+- change text NOTE: site is freezed and cached on 08 Mar 13:01. Next update will be at 13:30
+  to NOTE: showing cached content, will update in 15 minutes
+
 
 - try fengari lua
 

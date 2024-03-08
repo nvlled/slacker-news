@@ -1,4 +1,4 @@
-local LAYOUT, style = require "layout"
+local LAYOUT = require "layout"
 
 local page = tonumber(form:Get("page")) or 1
 local pageSize = 30
@@ -18,6 +18,7 @@ local style = {
         margin_bottom = 5,
     },
     CSS 'ol a' {
+        font_size="1.1rem",
         text_decoration = "none",
     },
 }
@@ -27,7 +28,8 @@ local list = {}
 for _, item in items() do
     table.insert(list, LI {
         A { href = "/item?id=" .. tostring(item.ID), item.Title },
-        SMALL { " ", item.Descendants, " comments" },
+        BR,
+        SMALL { item.Score, " points ", item.Descendants, " comments" },
     })
 end
 

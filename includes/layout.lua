@@ -43,7 +43,7 @@ local function LAYOUT(args)
                 {
                     margin = 0,
                     list_style_type = "none",
-                    border_right = "1px solid #484a4e",
+                    --border_right = "1px solid #484a4e",
                     padding = "0 10px",
                     border_collapse = "collapse",
                 },
@@ -56,13 +56,66 @@ local function LAYOUT(args)
                 color = "white",
             },
 
-        }
+        },
+        CSS "html" {
+            font_size = "100%",
+        },
+        CSS "body" {
+            background = style.bgColor,
+            color = style.textColor,
+            text_size_adjust = "none",
+        },
+        CSS "#wrapper" {
+            margin = "auto",
+            width = "100%",
+            font_size = "100%",
+            max_width=720,
+        },
+
+        CSS_MEDIA '(max-width: 800px)' {
+            CSS "#site-name" { display = "none !important" },
+        },
+
+
+        CSS_MEDIA '(orientation: portrait)' {
+            CSS "html" {
+                font_size = "160%",
+            },
+        },
+
+        CSS_MEDIA '(orientation: landscape)' {
+            CSS "html" {
+                font_size = "100%",
+            },
+            CSS "#wrapper" {
+                width = "100%",
+                margin = "auto",
+            },
+        },
+
+        CSS "a" {
+            color = style.linkColor,
+        },
+
+        CSS "#footer-notice" {
+            font_size = ".7rem",
+            text_align = "center",
+            margin_top = 20,
+            position = "fixed",
+            bottom = 0,
+            left = 0,
+        },
     })
 
     local menu = UL {
         id = "site-menu",
-        LI ^ A { href = "/new", "new" },
-        LI ^ A { href = "/submit", "submit" },
+
+        LI ^ A { href = "/", "/top/" },
+        LI ^ A { href = "#/new", "/new/" },
+        LI ^ A { href = "#/best", "/best/" },
+        LI ^ A { href = "#/ask", "/ask/" },
+        LI ^ A { href = "#/show", "/show/" },
+        LI ^ A { href = "#/job", "/job/" },
     }
 
     local account = DIV {
@@ -73,6 +126,7 @@ local function LAYOUT(args)
                 LI ^ A { href = "/user?id=" .. user.ID, user.Username },
                 LI ^ A { href = "logout", "logout" },
             },
+            LI ^ A { href = "/about", "about" },
         }
     }
 
@@ -100,61 +154,26 @@ local function LAYOUT(args)
         HEAD {
             TITLE((not Xt.isEmptyString(props.title) and props.title .. " | " or "") .. siteName),
             props.style and STYLE(props.style),
-            STYLE {
-                CSS "html" {
-                    font_size = "100%",
-                },
-                CSS "body" {
-                    background = style.bgColor,
-                    color = style.textColor,
-                    text_size_adjust = "none"
-                },
-                CSS "#wrapper" {
-                    margin = "auto",
-                    width = "100%",
-                    font_size = "100%",
-                },
+            config.DevMode and not props.noAutoReload and SCRIPT [[
+(function() {
+var disconnected = false;
+var evtSource = new EventSource("/.autoreload");
+evtSource.addEventListener("fsevent", function(event) {
+    window.location.reload();
+});
+evtSource.onopen = function() {
+    console.log("open", {disconnected});
+    if (disconnected) {
+        window.location.reload();
+    }
+}
+evtSource.onerror = function() {
+    disconnected = true;
+}
 
-                CSS_MEDIA '(orientation: portrait)' {
-                    CSS "html" {
-                        font_size = "160%",
-                    }
-                },
-
-                CSS_MEDIA '(orientation: landscape)' {
-                    CSS "html" {
-                        font_size = "100%",
-                    },
-                    CSS "#wrapper" {
-                        max_width = "800px",
-                        width = "100%",
-                        margin = "auto",
-                    },
-                },
-                CSS "a" {
-                    color = style.linkColor,
-                },
-            },
-            not props.noAutoReload and SCRIPT [[
-            (function() {
-                var disconnected = false;
-                var evtSource = new EventSource("/.autoreload");
-                evtSource.addEventListener("fsevent", function(event) {
-                    window.location.reload();
-                });
-                evtSource.onopen = function() {
-                    console.log("open", {disconnected});
-                    if (disconnected) {
-                        window.location.reload();
-                    }
-                }
-                evtSource.onerror = function() {
-                    disconnected = true;
-                }
-
-                console.log({evtSource});
-                window.addEventListener("unload", function() { evtSource.close(); })
-            })();
+console.log({evtSource});
+window.addEventListener("unload", function() { evtSource.close(); })
+})();
             ]]
         },
 
@@ -162,13 +181,11 @@ local function LAYOUT(args)
             navigation,
             contents,
             DIV {
-                style = "text-align: center; margin-top: 20px",
+                id = "footer-notice",
                 SMALL ^ I {
-                    I "NOTE: site is freezed and cached on ",
-                    os.date("%d %b %H:%M", cm.LastUpdate),
-                    SPAN {
-                        ". Next update will be at ", os.date("%H:%M", cm:GetNextUpdate()),
-                    }
+                    I "NOTE: showing cached content, next update will be in ",
+                    os.difftime(cm:GetNextUpdate(), os.time()) / 60,
+                    " minutes",
                 }
             }
         },

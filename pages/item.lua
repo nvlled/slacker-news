@@ -11,16 +11,7 @@ if not Xt.isEmptyString(err) then
     }
 end
 
---[[
-local style = module("item.css.lua", function(args)
-
-end
-STYLE{
-    style()
-}
---]]
-
-local style = STYLE {
+local style = {
     CSS_MEDIA '(orientation: portrait)' {
         CSS ".post.popup" {
             max_width = '80vw !important',
@@ -125,6 +116,29 @@ local style = STYLE {
     CSS "#context" {
         border_left = "2px solid gray",
         padding_left = 5,
+    },
+
+    CSS "#thread-header" {
+        display = "flex",
+        justify_content = "space-between",
+    },
+    CSS ".thread-nav" {
+        text_align = "right",
+        width = "100%",
+        CSS "> *" {
+            margin_right = 5
+        }
+    },
+    CSS "#floating-nav" {
+        padding=3,
+        background="#111",
+        position="fixed",
+        bottom="0",
+        right=0,
+        text_align = "right",
+        CSS "> *" {
+            margin_right = 5
+        }
     },
 }
 
@@ -261,8 +275,14 @@ for i, item in items() do
 
     if i == 2 then
         table.insert(list, DIV {
-            BR,
-            EM "comments"
+            id = "thread-header",
+            SPAN { "comments" },
+
+            DIV {
+                id = "top",
+                class = "thread-nav",
+                SPAN { "[", A { href = "#bottom", "bottom" }, "]" },
+            },
         })
     end
 
@@ -279,7 +299,7 @@ end
 
 return LAYOUT {
     title = op and op.title,
-    style,
+    style=style,
 
     commentCount > 10 and DIV {
         id = "top-commenters",
@@ -317,6 +337,19 @@ return LAYOUT {
         id = "thread",
         list
     },
+
+    DIV {
+        id = "bottom",
+        class = "thread-nav",
+        SPAN { "[", A { href = "#item-"..op.ID, "top" }, "]" },
+    },
+
+    --DIV {
+    --    id = "floating-nav",
+    --    A { href = "#bottom", "←back" },
+    --    SPAN " ",
+    --    A { href = "#bottom", "forward→" },
+    --},
 
 
     SCRIPT { src = "item.js" },

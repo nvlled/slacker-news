@@ -66,6 +66,7 @@ func handleServeLuaPage(
 		defer L.Close()
 
 		r.ParseForm()
+		L.SetGlobal("config", luar.New(L, config))
 		L.SetGlobal("form", luar.New(L, r.Form))
 		L.SetGlobal("request", luar.New(L, r))
 		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
@@ -120,15 +121,64 @@ func initLuaState(
 			panic(err)
 		}
 	}
-	if err := preloadModules(L, fsys, modules); err != nil {
+
+	L.SetGlobal("loadmodule", L.NewFunction(func(L *lua.LState) int {
+		modname := L.ToString(1)
+		filename1 := path.Join("lua", modname+".lua")
+		filename2 := path.Join("includes", modname+".lua")
+
+		var fn *lua.LFunction
+		var err error
+		if fsExists(fsys, filename1) {
+			fn, err = LoadFile(L, modules, fsys, filename1)
+		} else if fsExists(fsys, filename2) {
+			fn, err = LoadFile(L, modules, fsys, filename2)
+		} else {
+			panic(fmt.Errorf("module not found: %v", modname))
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		L.Push(fn)
+		return 1
+	}))
+
+	if err := DoFile(L, modules, fsys, "lua/loader.lua"); err != nil {
 		panic(err)
 	}
-
 	if err := DoFile(L, modules, fsys, "includes/init.lua"); err != nil {
 		panic(err)
 	}
 
 	return L
+}
+
+func LoadFile(
+	L *lua.LState,
+	modules CompiledLuaModules,
+	fsys fs.FS,
+	filename string,
+) (*lua.LFunction, error) {
+	bytes, err := fs.ReadFile(fsys, filename)
+	if err != nil {
+		return nil, err
+	}
+
+	source := string(bytes)
+
+	if proto, ok := modules[filename]; ok {
+		fn := L.NewFunctionFromProto(proto)
+		return fn, nil
+	} else {
+		fn, err := L.Load(strings.NewReader(source), filename)
+		if err != nil {
+			return nil, err
+		}
+		return fn, nil
+	}
+
 }
 
 func DoFile(
