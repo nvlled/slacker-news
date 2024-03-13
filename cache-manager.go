@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"io/fs"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	"github.com/nvlled/goom-temple/hn"
@@ -16,10 +16,11 @@ const (
 
 type CacheManager struct {
 	LastUpdate int64
+	StorageDir string
 }
 
-func NewCacheManager() *CacheManager {
-	return &CacheManager{}
+func NewCacheManager(storageDir string) *CacheManager {
+	return &CacheManager{StorageDir: storageDir}
 }
 
 func (c *CacheManager) GetNextUpdate() int64 {
@@ -34,24 +35,38 @@ func (c *CacheManager) GetNextUpdate() int64 {
 	return t.Add(time.Duration(mins) * time.Minute).Unix()
 }
 
-func (c *CacheManager) Init(fsys fs.FS) {
-	stat, err := fsStat(fsys, cacheUpdateFilename)
+func (c *CacheManager) Init() {
+	filename := path.Join(c.StorageDir, cacheUpdateFilename)
+	stat, err := os.Stat(filename)
 	if err != nil || stat == nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Printf("failed to read file: %v", err)
 		} else {
-			if err = os.WriteFile(cacheUpdateFilename, nil, 0644); err != nil {
+			log.Print("no existing cache update file found")
+			if err = os.WriteFile(filename, nil, 0644); err != nil {
 				log.Printf("failed to create file: %v", err)
 			}
 			c.LastUpdate = time.Now().Unix()
 		}
 	} else {
 		c.LastUpdate = stat.ModTime().Unix()
+		log.Printf("read cache last update: %v", c.LastUpdate)
 	}
+
+	files, err := os.ReadDir(hn.CacheDir)
+	if err != nil {
+		log.Printf("failed to list cache dir %v: %v", hn.CacheDir, err)
+	}
+	log.Print("listing cache contents")
+	for _, f := range files {
+		log.Printf("> %v", f.Name())
+	}
+
 }
 
 func (c *CacheManager) startLoop() {
 	for {
+		filename := path.Join(c.StorageDir, cacheUpdateFilename)
 		now := time.Now().Unix()
 		if now >= c.GetNextUpdate() {
 			log.Println("clearing cache")
@@ -61,7 +76,7 @@ func (c *CacheManager) startLoop() {
 				if err := os.MkdirAll(hn.CacheDir, 0755); err != nil {
 					panic(err)
 				}
-				if err = os.WriteFile(cacheUpdateFilename, nil, 0644); err != nil {
+				if err = os.WriteFile(filename, nil, 0644); err != nil {
 					log.Printf("failed to create file: %v", err)
 				}
 				log.Println("cache cleared")

@@ -1,5 +1,9 @@
 let selectedPost;
 
+function formatRFC8222(date) {
+    return date.toUTCString()
+}
+
 function highlightAnchoredPost() {
     if (!window.location.hash) return;
     const node = document.querySelector(window.location.hash)
@@ -62,11 +66,7 @@ function detectMobile() {
     });
 }
 
-window.onhashchange = highlightAnchoredPost;
-
-window.onload = function() {
-    highlightAnchoredPost();
-
+function setupPopups() {
     const isMobile = detectMobile()
 
     for (const link of document.querySelectorAll("a.post-link")) {
@@ -146,5 +146,19 @@ window.onload = function() {
             }
         }
     }
+}
+
+function setupDates() {
+    for (const elem of document.querySelectorAll(".post-datetime")) {
+        elem.textContent = new Date(elem.textContent).toLocaleString()
+    }
+}
+
+window.onhashchange = highlightAnchoredPost;
+
+window.onload = function() {
+    highlightAnchoredPost();
+    setupPopups();
+    setupDates();
 }
 

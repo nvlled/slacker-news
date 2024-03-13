@@ -1,5 +1,6 @@
 local LAYOUT = require "layout"
 
+local hnBaseURL = "https://news.ycombinator.com"
 local id = tonumber(form:Get("id"))
 local items, err = go:GetThread(id)
 
@@ -130,15 +131,31 @@ local style = {
         }
     },
     CSS "#floating-nav" {
-        padding=3,
-        background="#111",
-        position="fixed",
-        bottom="0",
-        right=0,
+        padding = 3,
+        background = "#111",
+        position = "fixed",
+        bottom = "0",
+        right = 0,
         text_align = "right",
         CSS "> *" {
             margin_right = 5
         }
+    },
+    CSS "#thread-id-input" {
+        display = "flex",
+        CSS "label" {
+            display = "flex",
+        }
+    },
+    CSS "#footer-notice" {
+        padding = 2,
+        font_size = ".7rem",
+        margin_top = 20,
+        text_align = "right",
+        position = "fixed",
+        bottom = 0,
+        right = 0,
+        CSS "i" { background = LAYOUT.style.bgColor },
     },
 }
 
@@ -148,10 +165,14 @@ local deadPosts = {}
 local kidIDs = {}
 local commentTally = {}
 local commentCount = 0
+local firstComment = nil
 
 for i, item in items() do
     if i == 1 then
         op = item
+    end
+    if (i == 1 and item.Type == "comment") or  i == 2 then
+        firstComment = item
     end
 
     local id = tostring(item.ID)
@@ -217,14 +238,18 @@ local function renderOP(item)
         DIV {
             class = "op-title",
             H1 ^ A { href = item.Url, item.Title },
-            url and SMALL { " (", url.Host, ")" },
+            not Xt.isEmptyString(url.Host) and SMALL { " (", url.Host, ")" },
         },
         DIV {
             class = "op-details",
             SPAN { item.Score, " points" },
             SPAN { " by ", item.By },
-            SPAN { " | ", commentCount, " comments", }
+            SPAN { " | ", commentCount, " comments | ", },
+            SPAN { class = "post-datetime", go:FormatTime(item.Time) },
+            SPAN " | ",
+            A { href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
         },
+        op.FetchTime,
         BR,
     }
 end
@@ -237,7 +262,7 @@ local function renderItem(item)
             class = "post-header",
             B / (tostring(item.By)),
             item.Dead and SPAN { "[dead post]" },
-            SPAN { go:FormatTime(item.Time) },
+            " ◴[", SPAN { class = "post-datetime", go:FormatTime(item.Time) }, "] ",
             SPAN {
                 class = "own-id",
                 A { href = "#item-" .. item.ID, "No." },
@@ -247,6 +272,7 @@ local function renderItem(item)
                 title = "comment depth, or how deep it is the comment heirarchy tree",
                 "{", item.Level, "}"
             },
+            A { href = hnBaseURL .. "/item?id=" .. item.ID, "[source]" },
             SPAN { class = "triangle", "▶" },
             Xt.map(kidIDs[tostring(item.ID)] or {}, function(childID)
                 return A { class = "reply post-link" .. (deadPosts[tostring(childID)] and " dead" or ""),
@@ -273,18 +299,6 @@ end
 for i, item in items() do
     local node
 
-    if i == 2 then
-        table.insert(list, DIV {
-            id = "thread-header",
-            SPAN { "comments" },
-
-            DIV {
-                id = "top",
-                class = "thread-nav",
-                SPAN { "[", A { href = "#bottom", "bottom" }, "]" },
-            },
-        })
-    end
 
     if i == 1 and item.Type == "story" then
         node = renderOP(item)
@@ -296,10 +310,30 @@ for i, item in items() do
     })
 end
 
+table.insert(list, 2, DIV {
+    id = "thread-header",
+    FORM {
+        action = "submit-id",
+        id = "thread-id-input",
+        LABEL {
+            "ID: ",
+            INPUT { name = "id", value = op.ID, placeholder = "HN item ID or url" },
+        },
+        BUTTON { "GO" }
+    },
+
+    commentCount > 5 and DIV {
+        id = "top",
+        class = "thread-nav",
+        SPAN { "[", A { href = "#bottom", "bottom" }, "]" },
+    },
+})
+
+
 
 return LAYOUT {
     title = op and op.title,
-    style=style,
+    style = style,
 
     commentCount > 10 and DIV {
         id = "top-commenters",
@@ -332,16 +366,21 @@ return LAYOUT {
         },
     },
 
-
     DIV {
         id = "thread",
         list
     },
 
-    DIV {
+    commentCount == 0 and DIV {
+        BR,
+        EM "(no comments)",
+    },
+
+
+    commentCount > 5 and DIV {
         id = "bottom",
         class = "thread-nav",
-        SPAN { "[", A { href = "#item-"..op.ID, "top" }, "]" },
+        SPAN { "[", A { href = "#item-" .. op.ID, "top" }, "]" },
     },
 
     --DIV {
@@ -351,6 +390,17 @@ return LAYOUT {
     --    A { href = "#bottom", "forward→" },
     --},
 
+     firstComment and firstComment.FetchTime > 0 and DIV {
+        id = "footer-notice",
+
+        SMALL ^ I {
+            "NOTE: showing cached content from ",
+            math.floor(os.difftime(os.time(), firstComment.FetchTime) / 60),
+            " minutes ago, next update will be in ",
+            math.floor(os.difftime(cm:GetNextUpdate(), os.time()) / 60),
+            " minutes",
+        }
+    },
 
     SCRIPT { src = "item.js" },
 }

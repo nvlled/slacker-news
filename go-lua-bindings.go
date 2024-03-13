@@ -9,12 +9,23 @@ import (
 	"github.com/nvlled/goom-temple/hn"
 )
 
-type GoLuaBindings struct {
-	request *http.Request
+var gmtLocation *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("GMT")
+	if err != nil {
+		panic(err)
+	}
+	gmtLocation = loc
 }
 
-func NewGoLuaBindings(r *http.Request) *GoLuaBindings {
-	return &GoLuaBindings{request: r}
+type GoLuaBindings struct {
+	response http.ResponseWriter
+	request  *http.Request
+}
+
+func NewGoLuaBindings(w http.ResponseWriter, r *http.Request) *GoLuaBindings {
+	return &GoLuaBindings{response: w, request: r}
 }
 
 func (glb *GoLuaBindings) GetCurrentUser() *User {
@@ -25,8 +36,8 @@ func (glb *GoLuaBindings) GetCurrentUser() *User {
 	//}
 }
 
-func (glb *GoLuaBindings) GetTopStories(pageSize, pageNum int) ([]*hn.Item, string, bool) {
-	items, err, hasMore := hn.FetchTopStories(pageSize, pageNum)
+func (glb *GoLuaBindings) GetStories(feed string, pageSize, pageNum int) ([]*hn.Item, string, bool) {
+	items, err, hasMore := hn.FetchStories(feed, pageSize, pageNum)
 	if err != nil {
 		log.Print(err)
 		return nil, err.Error(), false
@@ -47,8 +58,8 @@ func (glb *GoLuaBindings) GetCommentChain(id hn.ItemID) ([]*hn.Item, string) {
 }
 
 func (glb *GoLuaBindings) FormatTime(unixTime int64) string {
-	t := time.Unix(unixTime, 0)
-	return t.Format(time.ANSIC)
+	t := time.Unix(unixTime, 0).In(time.UTC)
+	return t.Format(time.RFC822)
 }
 
 func (glb *GoLuaBindings) ParseURL(rawURL string) (*url.URL, string) {
@@ -62,4 +73,9 @@ func logError[T any](x T, err error) (T, string) {
 		return defaultVal, err.Error()
 	}
 	return x, ""
+}
+
+func (glb *GoLuaBindings) Redirect(url string) {
+	glb.response.Header().Add("Location", url)
+	glb.response.WriteHeader(http.StatusFound)
 }

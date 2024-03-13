@@ -1,9 +1,12 @@
 local LAYOUT = require "layout"
 
+local feed = form:Get("feed")
 local page = tonumber(form:Get("page")) or 1
 local pageSize = 30
 
-local items, err, hasMore = go:GetTopStories(pageSize, page - 1)
+if Xt.isEmptyString(feed) then feed = "top" end
+
+local items, err, hasMore = go:GetStories(feed, pageSize, page - 1)
 
 if not Xt.isEmptyString(err) then
     return LAYOUT {
@@ -21,6 +24,11 @@ local style = {
         font_size="1.1rem",
         text_decoration = "none",
     },
+    CSS "#thread-id-input" {
+        display="block",
+        width="100%",
+        text_align="right",
+    },
 }
 
 local list = {}
@@ -35,6 +43,17 @@ end
 
 return LAYOUT {
     STYLE(style),
+
+    FORM {
+        id = "thread-id-input",
+        action = "submit-id",
+        LABEL {
+            "ID: ",
+            INPUT { name = "id", value = "", placeholder = "HN item ID or url" },
+        },
+        BUTTON { "GO" }
+    },
+
     OL {
         start = (page - 1) * pageSize + 1,
         list

@@ -20,6 +20,7 @@ type Item struct {
 	Descendants int      `json:"descendants"`
 
 	// Added non HN fields
-	Level      uint
-	ParentItem *Item
+	Level       uint
+	ParentItem  *Item
+	FetchTime int64 `json:"fetchTime"`
 }

@@ -69,7 +69,7 @@ func handleServeLuaPage(
 		L.SetGlobal("config", luar.New(L, config))
 		L.SetGlobal("form", luar.New(L, r.Form))
 		L.SetGlobal("request", luar.New(L, r))
-		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(r)))
+		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(w, r)))
 		L.SetGlobal("cm", luar.New(L, cacheManager))
 
 		if err := DoFile(L, modules, fsys, filename); err != nil {

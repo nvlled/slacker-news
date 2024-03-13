@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/nvlled/goom-temple/hn"
 )
 
 var isDevMode = true
@@ -18,12 +20,19 @@ var isDevMode = true
 var embeddedFiles embed.FS
 
 func main() {
+	storageDir := "."
+	if os.Getenv("FLYIO") != "" {
+		storageDir = "/data"
+		hn.CacheDir = path.Join(storageDir, hn.CacheDir)
+	}
+	log.Printf("using storage dir: %v", storageDir)
+
 	var fsys fs.ReadFileFS
 	var bindAddr string
 	var config = Config{DevMode: isDevMode}
 	dirWatcher := NewDirwatcher()
-	cacheManager := NewCacheManager()
 	bindAddr = ":8080"
+	cacheManager := NewCacheManager(storageDir)
 
 	if !isDevMode {
 		fsys = embeddedFiles
@@ -46,7 +55,7 @@ func main() {
 
 	}
 
-	cacheManager.Init(fsys)
+	cacheManager.Init()
 	cacheManager.Start()
 
 	cwd, _ := os.Getwd()

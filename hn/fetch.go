@@ -11,34 +11,19 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	baseURL  = "https://hacker-news.firebaseio.com/v0"
-	CacheDir = ".hn-cache"
+	baseURL = "https://hacker-news.firebaseio.com/v0"
 )
 
-var writeCacheQueue chan *Item
-
-func init() {
-	//if err := os.RemoveAll(CacheDir); err != nil {
-	//	log.Print(err)
-	//}
-	if err := os.MkdirAll(CacheDir, 0755); err != nil {
-		panic(err)
-	}
-
-	//writeCacheQueue = make(chan *Item, 255)
-	//go func() {
-	//	for item := range writeCacheQueue {
-	//		if err := writeCachedItem(item); err != nil {
-	//			log.Print(err)
-	//		}
-	//	}
-	//}()
-}
+var (
+	CacheDir        = ".hn-cache"
+	writeCacheQueue chan *Item
+)
 
 func fetchCachedItem(id ItemID) (*Item, error) {
 	filename := path.Join(CacheDir, fmt.Sprintf("item-%d.json", id))
@@ -59,6 +44,10 @@ func fetchCachedItem(id ItemID) (*Item, error) {
 }
 
 func writeCachedItem(item *Item) error {
+	if err := os.MkdirAll(CacheDir, 0755); err != nil {
+		panic(err)
+	}
+
 	filename := path.Join(CacheDir, fmt.Sprintf("item-%d.json", item.ID))
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -86,6 +75,8 @@ func FetchItem(id ItemID) (*Item, error) {
 	if err = json.NewDecoder(resp.Body).Decode(&item); err != nil {
 		return nil, err
 	}
+
+	item.FetchTime = time.Now().Unix()
 
 	//sort.SliceStable(item.Kids, func(i, j int) bool {
 	//	return item.Kids[i] < item.Kids[j]
@@ -214,9 +205,9 @@ func FetchThread(opID ItemID) ([]*Item, error) {
 	return result, nil
 }
 
-func readCachedTopStories() ([]ItemID, error) {
+func readCachedStories(filename string) ([]ItemID, error) {
 	var ids []ItemID
-	filename := path.Join(CacheDir, "topstories.json")
+	filename = path.Join(CacheDir, filename)
 
 	f, err := os.Open(filename)
 	if err != nil {
@@ -233,8 +224,8 @@ func readCachedTopStories() ([]ItemID, error) {
 	return ids, nil
 }
 
-func writeCachedTopStories(ids []ItemID) error {
-	filename := path.Join(CacheDir, "topstories.json")
+func writeCachedStories(filename string, ids []ItemID) error {
+	filename = path.Join(CacheDir,filename)
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -242,14 +233,32 @@ func writeCachedTopStories(ids []ItemID) error {
 	return json.NewEncoder(f).Encode(ids)
 }
 
-func FetchTopStories(pageSize, pageNum int) ([]*Item, error, bool) {
-	ids, err := readCachedTopStories()
-	if err != nil {
-		log.Printf("failed to read topstories cache: %v", err)
+func FetchStories(feed string, pageSize, pageNum int) ([]*Item, error, bool) {
+	switch feed {
+	case "top":
+	case "new":
+	case "best":
+	case "ask":
+	case "show":
+	case "job":
+	case "":
+		feed = "top"
+	default:
+		return nil, errors.New("invalid feed type"), false
 	}
 
+	filename := feed + "stories.json"
+
+        var ids []ItemID
+        var err error
+
+	//ids, err := readCachedStories(filename)
+	//if err != nil {
+	//	log.Printf("failed to read %v cache: %v", filename, err)
+	//}
+
 	if ids == nil {
-		resp, err := http.Get(baseURL + "/topstories.json")
+		resp, err := http.Get(baseURL + "/" + filename)
 		if err != nil {
 			return nil, err, false
 		}
@@ -259,9 +268,9 @@ func FetchTopStories(pageSize, pageNum int) ([]*Item, error, bool) {
 			return nil, err, false
 		}
 
-		if err = writeCachedTopStories(ids); err != nil {
-			log.Printf("failed to write topstories cache: %v", err)
-		}
+		//if err = writeCachedStories(filename, ids); err != nil {
+		//	log.Printf("failed to write %v cache: %v", filename, err)
+		//}
 	}
 
 	totalIDs := len(ids)

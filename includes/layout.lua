@@ -1,5 +1,7 @@
 local siteName = "slacker news"
 
+local feed = form:Get("feed") or ""
+
 local style = {
     bgColor = "#1d1f21 none",
     textColor = "#c5c8c6",
@@ -22,7 +24,7 @@ local function LAYOUT(args)
             },
         },
         CSS "#site-logo" {
-            padding = 10,
+            padding = "5px 10px",
             display = "inline-block",
             border = "3px solid #484a4e",
             CSS "a" {
@@ -56,6 +58,10 @@ local function LAYOUT(args)
                 color = "white",
             },
 
+            CSS "a.selected" {
+                color = "orange",
+            }
+
         },
         CSS "html" {
             font_size = "100%",
@@ -69,10 +75,10 @@ local function LAYOUT(args)
             margin = "auto",
             width = "100%",
             font_size = "100%",
-                max_width = "720px !important",
+            max_width = "40em !important",
         },
 
-        CSS_MEDIA '(max-width: 1000px)' {
+        CSS_MEDIA '(max-width: 900px)' {
             CSS "#wrapper" {
                 max_width = "unset !important",
             }
@@ -86,7 +92,7 @@ local function LAYOUT(args)
                 max_width = "unset !important",
             },
             CSS "#site-name, #site-menu" {
-                display="none"
+                display = "none"
             },
         },
 
@@ -104,28 +110,17 @@ local function LAYOUT(args)
             color = style.linkColor,
         },
 
-        CSS "#footer-notice" {
-            padding = 2,
-            font_size = ".7rem",
-            width = "100%",
-            margin_top = 20,
-            text_align = "right",
-            position = "fixed",
-            bottom = 0,
-            right = 0,
-            CSS "i" { background = style.bgColor },
-        },
     })
 
     local menu = UL {
         id = "site-menu",
 
-        LI ^ A { href = "/", "/top/" },
-        LI ^ A { href = "#/new", "/new/" },
-        LI ^ A { href = "#/best", "/best/" },
-        LI ^ A { href = "#/ask", "/ask/" },
-        LI ^ A { href = "#/show", "/show/" },
-        LI ^ A { href = "#/job", "/job/" },
+        LI ^ A { class = (feed == "" or feed == "top") and "selected" or "", href = "/", "/top/" },
+        LI ^ A { class = feed == "new" and "selected" or "", href = "/?feed=new", "/new/" },
+        LI ^ A { class = feed == "best" and "selected" or "", href = "/?feed=best", "/best/" },
+        LI ^ A { class = feed == "ask" and "selected" or "", href = "/?feed=ask", "/ask/" },
+        LI ^ A { class = feed == "show" and "selected" or "", href = "/?feed=show", "/show/" },
+        LI ^ A { class = feed == "job" and "selected" or "", href = "/?feed=job", "/job/" },
     }
 
     local account = DIV {
@@ -145,7 +140,7 @@ local function LAYOUT(args)
             id = "site-nav",
             DIV {
                 id = "site-logo",
-                A { href = "/", "𐲤" }
+                A { href = "/", "^" }
             },
             A { id = "site-name", href = "/", siteName },
             menu,
@@ -190,16 +185,6 @@ window.addEventListener("unload", function() { evtSource.close(); })
         BODY {
             navigation,
             contents,
-            DIV {
-                id = "footer-notice",
-                SMALL ^ I {
-                    "NOTE: showing cached content from ",
-                    math.floor(os.difftime(os.time(), cm.LastUpdate) / 60),
-                    " minutes ago, next update will be in ",
-                    math.floor(os.difftime(cm:GetNextUpdate(), os.time()) / 60),
-                    " minutes",
-                }
-            }
         },
 
     }
