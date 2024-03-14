@@ -57,11 +57,24 @@ local style = {
             [":hover"] = { color = LAYOUT.style.linkColor, },
         },
         CSS "a.reply" {
-            margin_right = "0.4rem",
+            text_decoration = "underline",
             font_size = "0.8rem",
             --display = "inline-block",
         },
     },
+
+    CSS ".reply-post-link-container" {
+        white_space = "nowrap",
+        margin_right = "0.7rem",
+    },
+
+    CSS ".post-link-hash" {
+        display = "none",
+    },
+    CSS ".m .post-link-hash" {
+        display = "inline",
+    },
+
     CSS ".post-body" {
         word_break = "break-word",
     },
@@ -157,6 +170,10 @@ local style = {
         right = 0,
         CSS "i" { background = LAYOUT.style.bgColor },
     },
+    CSS ".username" {
+        text_decoration="none",
+        color=LAYOUT.style.textColor,
+    },
 }
 
 local op
@@ -171,7 +188,7 @@ for i, item in items() do
     if i == 1 then
         op = item
     end
-    if (i == 1 and item.Type == "comment") or  i == 2 then
+    if (i == 1 and item.Type == "comment") or i == 2 then
         firstComment = item
     end
 
@@ -243,13 +260,12 @@ local function renderOP(item)
         DIV {
             class = "op-details",
             SPAN { item.Score, " points" },
-            SPAN { " by ", item.By },
+            A  {class="username", href=hnBaseURL .. "/user?id="..item.By, " ", "anon"},
             SPAN { " | ", commentCount, " comments | ", },
             SPAN { class = "post-datetime", go:FormatTime(item.Time) },
             SPAN " | ",
             A { href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
         },
-        op.FetchTime,
         BR,
     }
 end
@@ -260,7 +276,7 @@ local function renderItem(item)
         class = 'post' .. (item.Dead and ' dead' or ''),
         DIV {
             class = "post-header",
-            B / (tostring(item.By)),
+            A  {class="username", href=hnBaseURL .. "/user?id="..item.By, "anon"},
             item.Dead and SPAN { "[dead post]" },
             " ◴[", SPAN { class = "post-datetime", go:FormatTime(item.Time) }, "] ",
             SPAN {
@@ -275,9 +291,16 @@ local function renderItem(item)
             A { href = hnBaseURL .. "/item?id=" .. item.ID, "[source]" },
             SPAN { class = "triangle", "▶" },
             Xt.map(kidIDs[tostring(item.ID)] or {}, function(childID)
-                return A { class = "reply post-link" .. (deadPosts[tostring(childID)] and " dead" or ""),
-                    href = "#item-" .. childID,
-                    ">>" .. tostring(childID)
+                return SPAN {
+                    class = "reply-post-link-container",
+                    A { class = "reply post-link" .. (deadPosts[tostring(childID)] and " dead" or ""),
+                        href = "#item-" .. childID,
+                        ">>" .. tostring(childID)
+                    },
+                    A { class = "post-link-hash" .. (deadPosts[tostring(childID)] and " dead" or ""),
+                        href = "#item-" .. childID,
+                        " #",
+                    }
                 }
             end)
         },
@@ -286,6 +309,10 @@ local function renderItem(item)
                 class = "post-link parent", href = "#item-" .. item.Parent,
                 --data_id = item.ID,
                 ">>" .. item.Parent, (op and item.Parent == op.ID and op.type == "story" and " (OP)" or nil)
+            },
+            A { class = "post-link-hash" .. (deadPosts[tostring(item.Parent)] and " dead" or ""),
+                href = "#item-" .. item.Parent,
+                " #",
             }
         },
         DIV {
@@ -390,7 +417,7 @@ return LAYOUT {
     --    A { href = "#bottom", "forward→" },
     --},
 
-     firstComment and firstComment.FetchTime > 0 and DIV {
+    firstComment and firstComment.FetchTime > 0 and DIV {
         id = "footer-notice",
 
         SMALL ^ I {

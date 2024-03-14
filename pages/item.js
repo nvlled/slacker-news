@@ -25,11 +25,6 @@ function removeHighlightedPost() {
         selectedPost.classList.remove("selected");
         selectedPost = null;
     }
-    //if (!window.location.hash) return;
-    //for (const node of document.querySelectorAll(".post.selected")) {
-    //    node.classList.remove("selected")
-    //}
-    //window.location.hash = "";
 }
 
 function isVisibleInViewport(node) {
@@ -77,9 +72,11 @@ function setupPopups() {
 
         if ((isMobile)) {
             link.onclick = function(e) { e.preventDefault(); }
+            link.parentNode.classList.add("m");
         }
 
         let popup;
+
         link.onmouseover = function() {
             if (popup) return;
 
@@ -92,7 +89,6 @@ function setupPopups() {
                 if (isVisibleInViewport(post)) {
                     return;
                 }
-
 
                 if (post) {
                     popup = post.cloneNode(true)
@@ -138,6 +134,7 @@ function setupPopups() {
                 }
             }
         }
+
         link.onmouseout = function() {
             removeHighlightedPost();
             if (popup) {

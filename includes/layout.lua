@@ -1,8 +1,10 @@
 local siteName = "slacker news"
 
-local feed = form:Get("feed") or ""
+local feed     = form:Get("feed") or ""
+local reqpath  = request.URL.Path
+local isHome = reqpath == "/" or reqpath == "/index"
 
-local style = {
+local style    = {
     bgColor = "#1d1f21 none",
     textColor = "#c5c8c6",
     linkColor = "#5f89ac",
@@ -115,7 +117,7 @@ local function LAYOUT(args)
     local menu = UL {
         id = "site-menu",
 
-        LI ^ A { class = (feed == "" or feed == "top") and "selected" or "", href = "/", "/top/" },
+        LI ^ A { class = ((isHome and feed == "") or feed == "top") and "selected" or "", href = "/", "/top/" },
         LI ^ A { class = feed == "new" and "selected" or "", href = "/?feed=new", "/new/" },
         LI ^ A { class = feed == "best" and "selected" or "", href = "/?feed=best", "/best/" },
         LI ^ A { class = feed == "ask" and "selected" or "", href = "/?feed=ask", "/ask/" },
