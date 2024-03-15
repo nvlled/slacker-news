@@ -170,15 +170,29 @@ local style = {
         right = 0,
         CSS "i" { background = LAYOUT.style.bgColor },
     },
+
     CSS ".username" {
-        text_decoration="none",
-        color=LAYOUT.style.textColor,
+        text_decoration = "none",
+        color = LAYOUT.style.textColor,
+    },
+    CSS ".post-header .username" {
+        text_decoration = "none",
+        color = LAYOUT.style.textColor,
+        min_width=60,
+        display="inline-block",
+        CSS '.real' { display = "none", },
+        [":hover"] = {
+            CSS '.real' { display = "inherit", },
+            CSS '.alias' { display = "none", },
+        },
     },
 }
 
 local op
 local list = {}
 local deadPosts = {}
+local userAlias = {}
+local userAliasID = 0
 local kidIDs = {}
 local commentTally = {}
 local commentCount = 0
@@ -190,6 +204,11 @@ for i, item in items() do
     end
     if (i == 1 and item.Type == "comment") or i == 2 then
         firstComment = item
+    end
+
+    if not userAlias[item.By] then
+        userAliasID = userAliasID + 1
+        userAlias[item.By] = userAliasID
     end
 
     local id = tostring(item.ID)
@@ -260,7 +279,7 @@ local function renderOP(item)
         DIV {
             class = "op-details",
             SPAN { item.Score, " points" },
-            A  {class="username", href=hnBaseURL .. "/user?id="..item.By, " ", "anon"},
+            A { class = "username", href = hnBaseURL .. "/user?id=" .. item.By, " ", "slacker" .. userAlias[item.By] },
             SPAN { " | ", commentCount, " comments | ", },
             SPAN { class = "post-datetime", go:FormatTime(item.Time) },
             SPAN " | ",
@@ -276,7 +295,13 @@ local function renderItem(item)
         class = 'post' .. (item.Dead and ' dead' or ''),
         DIV {
             class = "post-header",
-            A  {class="username", href=hnBaseURL .. "/user?id="..item.By, "anon"},
+            A {
+                class = "username",
+                href = hnBaseURL .. "/user?id=" .. item.By,
+                SPAN { class = "real", item.By },
+                SPAN { class = "alias", "slacker" .. userAlias[item.By] },
+            },
+
             item.Dead and SPAN { "[dead post]" },
             " ◴[", SPAN { class = "post-datetime", go:FormatTime(item.Time) }, "] ",
             SPAN {
@@ -367,7 +392,7 @@ return LAYOUT {
         "Most active commenters",
         UL {
             Xt.map(topCommenters, function(entry)
-                return LI { entry[1], "(", entry[2], ")" }
+                return LI { "slacker" .. userAlias[entry[1]], "(", entry[2], ")" }
             end),
         },
     },

@@ -36,7 +36,7 @@ func (dw *DirWatcher) Start() {
 				if !ok {
 					return
 				}
-				if !(event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
+				if !event.Has(fsnotify.Write) {
 					continue
 				}
 
