@@ -101,7 +101,9 @@ func initLuaState(
 	fsys fs.FS,
 	modules CompiledLuaModules,
 ) *lua.LState {
-	L := lua.NewState(lua.Options{SkipOpenLibs: true})
+	L := lua.NewState(lua.Options{
+            SkipOpenLibs: true,
+        })
 
 	for _, pair := range []struct {
 		n string

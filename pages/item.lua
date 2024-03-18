@@ -1,8 +1,10 @@
 local LAYOUT = require "layout"
 
+local timeStart = go:UnixMilli()
 local hnBaseURL = "https://news.ycombinator.com"
 local id = tonumber(form:Get("id"))
 local items, err = go:GetThread(id)
+local timeEnd = go:UnixMilli()
 
 
 if not Xt.isEmptyString(err) then
@@ -11,182 +13,6 @@ if not Xt.isEmptyString(err) then
         I { err },
     }
 end
-
-local style = {
-    CSS_MEDIA '(orientation: portrait)' {
-        CSS ".post.popup" {
-            max_width = '80vw !important',
-        }
-    },
-
-    CSS ".post" {
-        position = "relative",
-        background_color = "#282a2e",
-        border = "0.05rem solid #282a2e",
-        padding = "0.5rem",
-        margin_bottom = "0.3rem",
-    },
-
-    CSS ".post.selected" {
-        background = '#1d1d21 !important',
-        border = '0.0.5rem solid #111 !important',
-    },
-
-    CSS ".post.popup" {
-        position = "absolute",
-        border = "0.05rem solid gray",
-        max_width = '50vw',
-        overflow = "auto"
-    },
-
-    CSS ".post.dead .post-body" {
-        color = "#121",
-    },
-
-    CSS ".post-header" {
-        margin_bottom = "0.3rem",
-        max_width = "100%",
-        overflow_wrap = "wrap",
-        --word_break = "keep-all",
-        CSS " > * " {
-            margin_right = "0.2rem",
-        },
-        CSS ".own-id a" {
-            color = "inherit",
-            text_decoration = "none",
-            [":hover"] = { color = LAYOUT.style.linkColor, },
-        },
-        CSS "a.reply" {
-            text_decoration = "underline",
-            font_size = "0.8rem",
-            --display = "inline-block",
-        },
-    },
-
-    CSS ".reply-post-link-container" {
-        white_space = "nowrap",
-        margin_right = "0.7rem",
-    },
-
-    CSS ".post-link-hash" {
-        display = "none",
-    },
-    CSS ".m .post-link-hash" {
-        display = "inline",
-    },
-
-    CSS ".post-body" {
-        word_break = "break-word",
-    },
-    CSS ".post-body pre" {
-        overflow_x = "auto",
-        white_space = "normal",
-        word_break = "break-all",
-    },
-
-    CSS ".post-link" {
-        display = "inline-block",
-        --word_break="keep-all",
-    },
-    CSS ".post-link.dead" {
-        text_decoration = "line-through underline",
-    },
-    CSS ".post-link.parent" {
-        margin_top = 10,
-    },
-
-    CSS ".op" {
-        background = LAYOUT.style.bgColor,
-    },
-    CSS ".op-title" {
-        CSS "h1" {
-            display = "inline-block",
-            font_size = "1.5rem",
-            margin = 0,
-        },
-        CSS "a" {
-            text_decoration = "none",
-            color = LAYOUT.style.textColor,
-        },
-        CSS "small" {
-            color = "gray",
-        }
-    },
-    CSS ".op-details" {
-    },
-    CSS "#top-commenters" {
-        font_size = "0.8rem",
-        CSS "ul" {
-            margin = 0,
-            padding = 0,
-        },
-        CSS "li" {
-            display = "inline-block",
-            border_left = "2px solid " .. LAYOUT.style.linkColor,
-            padding = "0 5px",
-            font_style = "italic",
-        }
-    },
-    CSS "#context" {
-        border_left = "2px solid gray",
-        padding_left = 5,
-    },
-
-    CSS "#thread-header" {
-        display = "flex",
-        justify_content = "space-between",
-    },
-    CSS ".thread-nav" {
-        text_align = "right",
-        width = "100%",
-        CSS "> *" {
-            margin_right = 5
-        }
-    },
-    CSS "#floating-nav" {
-        padding = 3,
-        background = "#111",
-        position = "fixed",
-        bottom = "0",
-        right = 0,
-        text_align = "right",
-        CSS "> *" {
-            margin_right = 5
-        }
-    },
-    CSS "#thread-id-input" {
-        display = "flex",
-        CSS "label" {
-            display = "flex",
-        }
-    },
-    CSS "#footer-notice" {
-        padding = 2,
-        font_size = ".7rem",
-        margin_top = 20,
-        text_align = "right",
-        position = "fixed",
-        bottom = 0,
-        right = 0,
-        CSS "i" { background = LAYOUT.style.bgColor },
-    },
-
-    CSS ".username" {
-        text_decoration = "none",
-        color = LAYOUT.style.textColor,
-    },
-    CSS ".post-header .username" {
-        text_decoration = "none",
-        color = LAYOUT.style.textColor,
-        min_width=60,
-        display="inline-block",
-        CSS '.real' { display = "none", },
-        [":hover"] = {
-            CSS '.real' { display = "inherit", },
-            CSS '.alias' { display = "none", },
-        },
-    },
-}
 
 local op
 local list = {}
@@ -219,6 +45,7 @@ for i, item in items() do
     else
         commentCount = commentCount + 1
 
+        local by = tostring(item.By)
         if not commentTally[item.By] then
             commentTally[item.By] = 0
         end
@@ -245,7 +72,39 @@ if op and op.Type == "comment" and op.Parent then
     end
 
     for _, item in chain() do
+        if kidIDs[id] then
+            goto continue
+        end
+
+        if not userAlias[item.By] then
+            userAliasID = userAliasID + 1
+            userAlias[item.By] = userAliasID
+        end
+
+        local id = tostring(item.ID)
+        kidIDs[id] = {}
+
+        if item.Dead or not item.By or not item.Text or item.Text == "" or item.Text == "" then
+            deadPosts[tostring(item.ID)] = true
+        else
+            commentCount = commentCount + 1
+
+            if not commentTally[item.By] then
+                commentTally[item.By] = 0
+            end
+            commentTally[item.By] = commentTally[item.By] + 1
+
+            if item.Kids then
+                for _, childID in item.Kids() do
+                    table.insert(kidIDs[id], childID)
+                end
+                table.sort(kidIDs[id])
+            end
+        end
+
         table.insert(commentChain, item)
+
+        ::continue::
     end
 end
 
@@ -284,21 +143,28 @@ local function renderOP(item)
             SPAN { class = "post-datetime", go:FormatTime(item.Time) },
             SPAN " | ",
             A { href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
+            SPAN " | ",
+            "HN request time: ",
+            (timeEnd - timeStart) / 1000,
+            "s",
         },
         BR,
     }
 end
 
-local function renderItem(item)
+local function renderItem(item, num)
     return DIV {
         id = "item-" .. item.ID,
         class = 'post' .. (item.Dead and ' dead' or ''),
         DIV {
             class = "post-header",
+            num and {
+                SPAN {class="comment-num", num + 1, ". "},
+            },
             A {
                 class = "username",
                 href = hnBaseURL .. "/user?id=" .. item.By,
-                SPAN { class = "real", item.By },
+                title = "HN username: " .. item.By,
                 SPAN { class = "alias", "slacker" .. userAlias[item.By] },
             },
 
@@ -348,15 +214,18 @@ local function renderItem(item)
     }
 end
 
+local commentNum = 0
 for i, item in items() do
     local node
 
 
     if i == 1 and item.Type == "story" then
-        node = renderOP(item)
-    elseif not deadPosts[item.ID] then
-        node = renderItem(item)
+        node = renderOP(item, i)
+    elseif not deadPosts[tostring(item.ID)] then
+        node = renderItem(item, commentNum)
+        commentNum = commentNum+1
     end
+
     table.insert(list, DIV {
         node
     })
@@ -385,7 +254,183 @@ table.insert(list, 2, DIV {
 
 return LAYOUT {
     title = op and op.title,
-    style = style,
+    style = {
+        CSS_MEDIA '(orientation: portrait)' {
+            CSS ".post.popup" {
+                max_width = '80vw !important',
+            }
+        },
+
+        CSS ".post" {
+            position = "relative",
+            background_color = "#282a2e",
+            border = "0.05rem solid #282a2e",
+            padding = "0.5rem",
+            margin_bottom = "0.3rem",
+        },
+
+        CSS ".post.selected" {
+            background = '#1d1d21 !important',
+            border = '0.0.5rem solid #111 !important',
+        },
+
+        CSS ".post.popup" {
+            position = "absolute",
+            border = "0.05rem solid gray",
+            max_width = '50vw',
+            overflow = "auto"
+        },
+
+        CSS ".post.dead .post-body" {
+            color = "#121",
+        },
+
+        CSS ".post-header" {
+            margin_bottom = "0.3rem",
+            max_width = "100%",
+            overflow_wrap = "wrap",
+            --word_break = "keep-all",
+            CSS " > * " {
+                margin_right = "0.2rem",
+            },
+            CSS ".own-id a" {
+                color = "inherit",
+                text_decoration = "none",
+                [":hover"] = { color = LAYOUT.style.linkColor, },
+            },
+            CSS "a.reply" {
+                text_decoration = "underline",
+                font_size = "0.8rem",
+                --display = "inline-block",
+            },
+        },
+
+        CSS ".reply-post-link-container" {
+            white_space = "nowrap",
+            margin_right = "0.7rem",
+        },
+
+        CSS ".post-link-hash" {
+            display = "none",
+        },
+        CSS ".m .post-link-hash" {
+            display = "inline",
+        },
+
+        CSS ".post-body" {
+            word_break = "break-word",
+        },
+        CSS ".post-body pre" {
+            overflow_x = "auto",
+            white_space = "normal",
+            word_break = "break-all",
+        },
+
+        CSS ".post-link" {
+            display = "inline-block",
+            --word_break="keep-all",
+        },
+        CSS ".post-link.dead" {
+            text_decoration = "line-through underline",
+        },
+        CSS ".post-link.parent" {
+            margin_top = 10,
+        },
+
+        CSS ".op" {
+            background = LAYOUT.style.bgColor,
+        },
+        CSS ".op-title" {
+            CSS "h1" {
+                display = "inline-block",
+                font_size = "1.5rem",
+                margin = 0,
+            },
+            CSS "a" {
+                text_decoration = "none",
+                color = LAYOUT.style.textColor,
+            },
+            CSS "small" {
+                color = "gray",
+            }
+        },
+        CSS ".op-details" {
+        },
+        CSS "#top-commenters" {
+            font_size = "0.8rem",
+            CSS "ul" {
+                margin = 0,
+                padding = 0,
+            },
+            CSS "li" {
+                display = "inline-block",
+                border_left = "2px solid " .. LAYOUT.style.linkColor,
+                padding = "0 5px",
+                font_style = "italic",
+            }
+        },
+        CSS "#context" {
+            border_left = "2px solid gray",
+            padding_left = 5,
+        },
+
+        CSS "#thread-header" {
+            display = "flex",
+            justify_content = "space-between",
+        },
+        CSS ".thread-nav" {
+            text_align = "right",
+            width = "100%",
+            CSS "> *" {
+                margin_right = 5
+            }
+        },
+        CSS "#floating-nav" {
+            padding = 3,
+            background = "#111",
+            position = "fixed",
+            bottom = "0",
+            right = 0,
+            text_align = "right",
+            CSS "> *" {
+                margin_right = 5
+            }
+        },
+        CSS "#thread-id-input" {
+            display = "flex",
+            CSS "label" {
+                display = "flex",
+            }
+        },
+        CSS "#footer-notice" {
+            padding = 2,
+            font_size = ".7rem",
+            margin_top = 20,
+            text_align = "right",
+            position = "fixed",
+            bottom = 0,
+            right = 0,
+            CSS "i" { background = LAYOUT.style.bgColor },
+        },
+
+        CSS ".username" {
+            text_decoration = "none",
+            color = LAYOUT.style.textColor,
+        },
+        CSS ".post-header .username" {
+            text_decoration = "none",
+            color = LAYOUT.style.textColor,
+            display = "inline-block",
+        },
+        CSS ".comment-num" {
+            color="#777",
+            font_size=".5em",
+            position="absolute",
+            top="-0px",
+            right="-0px",
+        },
+    },
+
 
     commentCount > 10 and DIV {
         id = "top-commenters",

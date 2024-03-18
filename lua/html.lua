@@ -38,9 +38,9 @@ local function styleToString(t)
     for key, value in pairs(t) do
         if type(key) == "string" then
             if type(value) == "number" then
-                table.insert(declarations, underscore2Dash(key) .. ": " .. tostring(value) .. "px")
+                table.insert(declarations, table.concat { underscore2Dash(key), ": ", tostring(value), "px" })
             else
-                table.insert(declarations, underscore2Dash(key) .. ": " .. value)
+                table.insert(declarations, table.concat { underscore2Dash(key), ": ", value })
             end
         else
             error("invalid declaration: " .. tostring(key))
@@ -52,20 +52,20 @@ end
 
 local function attrsToString(attrs)
     if tableLen(attrs) == 0 then return "" end
-    local entries = {}
+    local entries = { " " }
     for k, v in pairs(attrs) do
         if type(k) == "string" then
             k = attrEscape(underscore2Dash(k))
             if k == "style" and type(v) == "table" then
-                table.insert(entries, underscore2Dash(k) .. "=" .. '"' .. attrEscape(styleToString(v)) .. '"')
+                table.insert(entries, table.concat { underscore2Dash(k), "=", '"', attrEscape(styleToString(v)), '"' })
             elseif type(v) == "boolean" then
                 table.insert(entries, underscore2Dash(k))
             else
-                table.insert(entries, underscore2Dash(k) .. "=" .. '"' .. attrEscape(tostring(v)) .. '"')
+                table.insert(entries, table.concat { underscore2Dash(k), "=", '"', attrEscape(tostring(v)), '"' })
             end
         end
     end
-    return " " .. table.concat(entries, " ")
+    return table.concat(entries, " ")
 end
 
 local function nodeToString(node, level)
@@ -83,7 +83,7 @@ local function nodeToString(node, level)
     if node.options.selfClosing then
         if not node.children or #node.children == 0 then
             local tag = node.tag or ""
-            return prefix .. "<" .. tag .. attrsToString(node.attrs) .. "/>" .. suffix
+            return table.concat { prefix, "<", tag, attrsToString(node.attrs), "/>", suffix }
         end
     end
 
@@ -104,8 +104,10 @@ local function nodeToString(node, level)
         return body
     end
 
-    return prefix .. "<" .. node.tag .. attrsToString(node.attrs) .. ">" ..
-        body .. "</" .. node.tag .. ">" .. suffix
+    return table.concat {
+        prefix, "<", node.tag, attrsToString(node.attrs), ">",
+        body, "</", node.tag, ">", suffix
+    }
 end
 
 local appendChild = function(a, b)

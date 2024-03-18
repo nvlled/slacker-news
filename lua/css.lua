@@ -32,17 +32,18 @@ local function cssToString(ruleset)
         local indent = ""
         if rule.mediaQuery then
             indent = "  "
-            table.insert(buffer, "@media " .. rule.mediaQuery .. "{\n")
+            table.insert(buffer, table.concat { "@media ", rule.mediaQuery, "{\n" })
         end
 
-        table.insert(buffer, indent .. trim(rule.selector) .. " {\n")
+        table.insert(buffer, table.concat { indent, trim(rule.selector), " {\n" })
 
         for _, e in ipairs(sortTable(rule.declarations)) do
-            local decl = "  " .. e.k .. ": " .. e.v .. ";\n"
-            table.insert(buffer, indent .. decl)
+            local decl = table.concat { indent, "  ", e.k, ": ", e.v, ";\n" }
+            table.insert(buffer, decl)
         end
 
-        table.insert(buffer, indent .. "}\n")
+        table.insert(buffer, indent)
+        table.insert(buffer, "}\n")
 
         if rule.mediaQuery then
             table.insert(buffer, "}\n")
@@ -57,17 +58,12 @@ end
 local function mediaToString(media)
     local buffer = {}
     for _, ruleset in ipairs(media.rulesets) do
-        for line in ext.split(tostring(ruleset), "\n") do
-            table.insert(buffer, "  " .. line)
-        end
-    end
-    if #buffer > 0 then
-        buffer[#buffer] = ext.trim(buffer[#buffer])
+        table.insert(buffer, tostring(ruleset))
     end
 
-    return "@media " .. media.types .. " {\n" ..
-        table.concat(buffer, "\n") ..
-        "}"
+    return table.concat {
+        "@media ", media.types, " {\n", table.concat(buffer, "\n"), "}"
+    }
 end
 
 local cssMeta = {
@@ -82,7 +78,7 @@ local cssMediaMeta = {
 local function appendSelector(parent, child, nospace)
     local sep = nospace and "" or " "
     if not parent:find(",") and not child:find(",") then
-        return parent .. sep .. child
+        return table.concat { parent, sep, child }
     end
 
     local xs = {}
@@ -90,7 +86,7 @@ local function appendSelector(parent, child, nospace)
         h = h:match("^%s*(.-)%s*$")
         for k in ext.split(child, ",") do
             k = k:match("^%s*(.-)%s*$")
-            table.insert(xs, h .. sep .. k)
+            table.insert(xs, table.concat { h, sep, k })
         end
     end
 
@@ -146,7 +142,7 @@ local function _CSS(args, selector)
                     rule.selector = appendSelector(selector, rule.selector)
 
                     if rule.mediaQuery then
-                        rule.mediaQuery = value.types .. " and " .. rule.mediaQuery
+                        rule.mediaQuery = table.concat { value.types, " and ", rule.mediaQuery }
                     else
                         rule.mediaQuery = value.types
                     end

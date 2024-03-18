@@ -1,5 +1,3 @@
-- commit changes, add readme
-
 - set  white-space: pre for <code> and <pre>
 
 - move bigger stylesheets to a file and add an etag

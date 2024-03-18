@@ -79,3 +79,7 @@ func (glb *GoLuaBindings) Redirect(url string) {
 	glb.response.Header().Add("Location", url)
 	glb.response.WriteHeader(http.StatusFound)
 }
+
+func (glb *GoLuaBindings) UnixMilli() int64 {
+	return time.Now().UnixMilli()
+}
