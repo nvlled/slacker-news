@@ -1,18 +1,30 @@
 package main
 
 import (
+	"io/fs"
+	"os"
 	"testing"
 
-	lua "github.com/yuin/gopher-lua"
+	luar "layeh.com/gopher-luar"
 )
 
-func TestArray(t *testing.T) {
-	L := lua.NewState()
-	defer L.Close()
-
-	a := [...]string{"x", "y"}
-	b := [...]string{"x", "y"}
-
-        _ = a
-        _ = b
+func TestLuaExec(t *testing.T) {
+	var modules CompiledLuaModules
+	var config = Config{DevMode: isDevMode}
+	d := os.DirFS(".")
+	fsys, _ := d.(fs.ReadFileFS)
+	L := initLuaState(config, fsys, modules)
+	L.SetGlobal("write", luar.New(L, func(s string) {
+		print(s)
+	}))
+	err := L.DoString(`
+            local node = HTML{
+                H1 "test"
+            }
+            blah(node)
+        `)
+	if err != nil {
+		panic(err)
+	}
+	println()
 }

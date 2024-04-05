@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -72,13 +73,26 @@ func handleServeLuaPage(
 		L.SetGlobal("go", luar.New(L, NewGoLuaBindings(w, r)))
 		L.SetGlobal("cm", luar.New(L, cacheManager))
 
+		L.SetGlobal("debug", luar.New(L, func(x any) {
+			s, err := json.Marshal(x)
+			if err != nil {
+				panic(err)
+			}
+			print(s)
+		}))
+
+		L.SetGlobal("write", luar.New(L, func(s string) {
+			w.Write([]byte(s))
+
+		}))
+
 		if err := DoFile(L, modules, fsys, filename); err != nil {
 			respondInternalError(w, err)
 			return
 		}
 		lv := L.Get(-1)
 		if err := L.CallByParam(lua.P{
-			Fn:      L.GetGlobal("tostring"),
+			Fn:      L.GetGlobal("respond"),
 			NRet:    1,
 			Protect: true,
 		}, lv); err != nil {
@@ -86,13 +100,13 @@ func handleServeLuaPage(
 			return
 		}
 
-		ret := L.Get(-1)
+		//ret := L.Get(-1)
 
-		_, err = w.Write([]byte(ret.String()))
-		if err != nil {
-			respondInternalError(w, err)
-			return
-		}
+		//_, err = w.Write([]byte(ret.String()))
+		//if err != nil {
+		//	respondInternalError(w, err)
+		//	return
+		//}
 	})
 }
 
@@ -102,8 +116,8 @@ func initLuaState(
 	modules CompiledLuaModules,
 ) *lua.LState {
 	L := lua.NewState(lua.Options{
-            SkipOpenLibs: true,
-        })
+		SkipOpenLibs: true,
+	})
 
 	for _, pair := range []struct {
 		n string

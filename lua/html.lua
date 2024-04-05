@@ -4,8 +4,11 @@ local ppMeta
 local ctorMeta
 local nodeMeta
 
-local function trim(s)
-    return s:match("^%s*(.-)%s*$")
+function output(...)
+    local writer = write or io.write
+    for _, x in ipairs({ ... }) do
+        writer(tostring(x))
+    end
 end
 
 local function tableLen(t)
@@ -50,6 +53,23 @@ local function styleToString(t)
     return table.concat(declarations, "; ")
 end
 
+local function attrsPrint(attrs)
+    if tableLen(attrs) == 0 then return end
+    output(" ")
+    for k, v in pairs(attrs) do
+        if type(k) == "string" then
+            k = attrEscape(underscore2Dash(k))
+            if k == "style" and type(v) == "table" then
+                output(underscore2Dash(k), "=", '"', attrEscape(styleToString(v)), '"')
+            elseif type(v) == "boolean" then
+                output(underscore2Dash(k))
+            else
+                output(underscore2Dash(k), "=", '"', attrEscape(tostring(v)), '"')
+            end
+        end
+    end
+end
+
 local function attrsToString(attrs)
     if tableLen(attrs) == 0 then return "" end
     local entries = { " " }
@@ -66,6 +86,56 @@ local function attrsToString(attrs)
         end
     end
     return table.concat(entries, " ")
+end
+
+local function nodePrint(node, level)
+    if not node or not node.tag then
+        return
+    end
+
+    if node.options.output then
+        output(node.options.output(node))
+        return
+    end
+
+    local prefix = node.options.prefix or ""
+    local suffix = node.options.suffix or ""
+
+    if node.options.selfClosing then
+        if not node.children or #node.children == 0 then
+            local tag = node.tag or ""
+            output(prefix, "<", tag)
+            if node.attrs and #node.attrs > 0 then
+                output(" ")
+            end
+            attrsPrint(node.attrs)
+            output("/>", suffix)
+            return
+        end
+    end
+
+    if not level then level = 1 end
+
+    if node.tag ~= "" then
+        output(prefix, "<", node.tag)
+        if node.attrs and #node.attrs > 0 then
+            output(" ")
+        end
+        attrsPrint(node.attrs)
+        output(">")
+    end
+
+    for _, sub in pairs(node.children) do
+        if type(sub) == "string" then
+            output(node.options.noHTMLEscape and sub or htmlEscape(sub))
+        elseif sub and sub.print then
+            sub:print(level)
+        end
+    end
+
+    if node.tag ~= "" then
+        output("</", node.tag, ">", suffix)
+    end
 end
 
 local function nodeToString(node, level)
@@ -121,10 +191,12 @@ local appendChild = function(a, b)
 end
 
 nodeMeta = {
+    print = nodePrint,
     __tostring = nodeToString,
     __div = appendChild,
     __pow = appendChild,
 }
+nodeMeta.__index = nodeMeta
 
 local function _node(tagName, args, options)
     options = options or {}
@@ -189,11 +261,13 @@ local function _node(tagName, args, options)
 end
 
 ctorMeta = {
+    string = function() reutrn "huh" end,
     __call = function(self, args) return self.ctor(args) end,
     __pow = function(self, args) return self.ctor(args) end,
     __div = function(self, args) return self.ctor(args) end,
     __idiv = function(self, args) return self.ctor(args) end,
 }
+ctorMeta.__index = ctorMeta
 
 function Node(tagName, options)
     local ctor = function(args)
@@ -330,7 +404,9 @@ ppMeta = {
     end,
     __pow = function(a, b) return nodeMeta.__pow(a, b) end,
     __tostring = function(x) return nodeMeta.__tostring(x) end,
+    print = function(x) return nodeMeta.print(x) end,
 }
+ppMeta.__index = ppMeta
 
 function PP(args)
     if type(args) == "string" then

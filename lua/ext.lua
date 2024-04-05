@@ -47,6 +47,20 @@ function P.map(t, fn)
     return result
 end
 
+function P.mapSlice(si, sj, t, fn)
+    local result = {}
+    for i, v in pairs(t) do
+        if i >= si then
+            table.insert(result, fn(v, i))
+        end
+        if i >= sj then
+            goto finish
+        end
+    end
+    ::finish::
+    return result
+end
+
 function P.slice(t, from, to)
     local result = {}
     for i = from, to, 1 do

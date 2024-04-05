@@ -21,6 +21,7 @@ local userAlias = {}
 local userAliasID = 0
 local kidIDs = {}
 local commentTally = {}
+local replyTally = {}
 local commentCount = 0
 local firstComment = nil
 
@@ -40,22 +41,26 @@ for i, item in items() do
     local id = tostring(item.ID)
     kidIDs[id] = {}
 
+
     if item.Dead or not item.By or not item.Text or item.Text == "" or item.Text == "" then
         deadPosts[tostring(item.ID)] = true
     else
         commentCount = commentCount + 1
 
         local by = tostring(item.By)
-        if not commentTally[item.By] then
-            commentTally[item.By] = 0
+        if not commentTally[by] then
+            commentTally[by] = 0
         end
-        commentTally[item.By] = commentTally[item.By] + 1
+        commentTally[by] = commentTally[by] + 1
 
         if item.Kids then
             for _, childID in item.Kids() do
                 table.insert(kidIDs[id], childID)
             end
             table.sort(kidIDs[id])
+            if #kidIDs[id] >= 3 and op.ID ~= item.ID then
+                table.insert(replyTally, { id = id, count = #kidIDs[id] })
+            end
         end
     end
 end
@@ -87,7 +92,7 @@ if op and op.Type == "comment" and op.Parent then
         if item.Dead or not item.By or not item.Text or item.Text == "" or item.Text == "" then
             deadPosts[tostring(item.ID)] = true
         else
-            commentCount = commentCount + 1
+            --commentCount = commentCount + 1
 
             if not commentTally[item.By] then
                 commentTally[item.By] = 0
@@ -111,7 +116,7 @@ end
 
 local topCommenters = {}
 for username, count in pairs(commentTally) do
-    if count >= 2 then
+    if count >= 3 then
         table.insert(topCommenters, { username, count })
     end
 end
@@ -119,9 +124,10 @@ end
 table.sort(topCommenters, function(a, b)
     return a[2] > b[2]
 end)
-for i = 11, #topCommenters do
-    topCommenters[i] = nil
-end
+
+table.sort(replyTally, function(a, b)
+    return a.count > b.count
+end)
 
 --if commentCount > 0 then commentCount = commentCount - 1 end
 
@@ -138,34 +144,44 @@ local function renderOP(item)
         DIV {
             class = "op-details",
             SPAN { item.Score, " points" },
-            A { class = "username", href = hnBaseURL .. "/user?id=" .. item.By, " ", "slacker" .. userAlias[item.By] },
+            A { class = "username", href = hnBaseURL .. "/user?id=" .. item.By, " ", "slacker" .. (userAlias[item.By] or "") },
             SPAN { " | ", commentCount, " comments | ", },
             SPAN { class = "post-datetime", go:FormatTime(item.Time) },
             SPAN " | ",
-            A { href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
+            A { class = "source", href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
+            commentCount > 5 and FRAGMENT {
+                id = "top",
+                SPAN " | ",
+                SPAN { A { href = "#bottom", "bottom" }, },
+            },
             SPAN " | ",
             "HN request time: ",
             (timeEnd - timeStart) / 1000,
             "s",
+        },
+        item.Text and DIV {
+            __noHTMLEscape = true,
+            BR,
+            item.Text
         },
         BR,
     }
 end
 
 local function renderItem(item, num)
+    local replies = kidIDs[tostring(item.ID)] or {}
     return DIV {
         id = "item-" .. item.ID,
         class = 'post' .. (item.Dead and ' dead' or ''),
         DIV {
             class = "post-header",
             num and {
-                SPAN {class="comment-num", num + 1, ". "},
+                SPAN { class = "comment-num", num + 1, ". " },
             },
             A {
                 class = "username",
                 href = hnBaseURL .. "/user?id=" .. item.By,
-                title = "HN username: " .. item.By,
-                SPAN { class = "alias", "slacker" .. userAlias[item.By] },
+                SPAN { class = "alias", item.By },
             },
 
             item.Dead and SPAN { "[dead post]" },
@@ -179,21 +195,9 @@ local function renderItem(item, num)
                 title = "comment depth, or how deep it is the comment heirarchy tree",
                 "{", item.Level, "}"
             },
-            A { href = hnBaseURL .. "/item?id=" .. item.ID, "[source]" },
+            A { class = "source", href = hnBaseURL .. "/item?id=" .. item.ID, "[source]" },
             SPAN { class = "triangle", "▶" },
-            Xt.map(kidIDs[tostring(item.ID)] or {}, function(childID)
-                return SPAN {
-                    class = "reply-post-link-container",
-                    A { class = "reply post-link" .. (deadPosts[tostring(childID)] and " dead" or ""),
-                        href = "#item-" .. childID,
-                        ">>" .. tostring(childID)
-                    },
-                    A { class = "post-link-hash" .. (deadPosts[tostring(childID)] and " dead" or ""),
-                        href = "#item-" .. childID,
-                        " #",
-                    }
-                }
-            end)
+            BR,
         },
         item.Parent and DIV {
             A {
@@ -211,6 +215,24 @@ local function renderItem(item, num)
             __noHTMLEscape = true,
             item.Text,
         },
+        #replies > 0 and DIV {
+            class = "post-replies-container",
+            I { " replies(", #replies, "): " },
+            Xt.map(replies, function(childID)
+                return SPAN {
+                    class = "reply-post-link-container",
+                    A { class = "reply post-link" .. (deadPosts[tostring(childID)] and " dead" or ""),
+                        href = "#item-" .. childID,
+                        ">>" .. tostring(childID)
+                    },
+                    A { class = "post-link-hash" .. (deadPosts[tostring(childID)] and " dead" or ""),
+                        href = "#item-" .. childID,
+                        " #",
+                    }
+                }
+            end)
+        },
+        DIV { id = "post-footer" },
     }
 end
 
@@ -218,12 +240,11 @@ local commentNum = 0
 for i, item in items() do
     local node
 
-
     if i == 1 and item.Type == "story" then
         node = renderOP(item, i)
     elseif not deadPosts[tostring(item.ID)] then
         node = renderItem(item, commentNum)
-        commentNum = commentNum+1
+        commentNum = commentNum + 1
     end
 
     table.insert(list, DIV {
@@ -238,16 +259,11 @@ table.insert(list, 2, DIV {
         id = "thread-id-input",
         LABEL {
             "ID: ",
-            INPUT { name = "id", value = op.ID, placeholder = "HN item ID or url" },
+            INPUT { name = "id", value = op and op.ID or 0, placeholder = "HN item ID or url" },
         },
         BUTTON { "GO" }
     },
 
-    commentCount > 5 and DIV {
-        id = "top",
-        class = "thread-nav",
-        SPAN { "[", A { href = "#bottom", "bottom" }, "]" },
-    },
 })
 
 
@@ -272,6 +288,7 @@ return LAYOUT {
         CSS ".post.selected" {
             background = '#1d1d21 !important',
             border = '0.0.5rem solid #111 !important',
+            border_left = "2px solid " .. LAYOUT.style.linkColor,
         },
 
         CSS ".post.popup" {
@@ -319,22 +336,43 @@ return LAYOUT {
 
         CSS ".post-body" {
             word_break = "break-word",
-        },
-        CSS ".post-body pre" {
-            overflow_x = "auto",
-            white_space = "normal",
-            word_break = "break-all",
+            CSS "pre" {
+                overflow_x = "auto",
+                white_space = "normal",
+                word_break = "break-all",
+            },
+            CSS "p:first-child" {
+                margin_top = 0,
+            },
+            CSS "p:last-child" {
+                margin_bottom = 0,
+            },
+            CSS "pre" {
+                background = "#333",
+                margin = 0,
+                padding = 10,
+            }
         },
 
         CSS ".post-link" {
             display = "inline-block",
+            [":active"] = { color = "red" },
+            [":hover"] = { color = "orange" }
             --word_break="keep-all",
         },
         CSS ".post-link.dead" {
-            text_decoration = "line-through underline",
+            text_decoration = "line-through underline !important",
         },
         CSS ".post-link.parent" {
             margin_top = 10,
+        },
+        CSS ".post-replies-container" {
+            margin_top = 8,
+            font_size = ".7em",
+            line_height = "1.9",
+            CSS "i" {
+                margin_right = 5,
+            }
         },
 
         CSS ".op" {
@@ -369,6 +407,17 @@ return LAYOUT {
                 font_style = "italic",
             }
         },
+        CSS "#most-popular" {
+            font_size = "0.8rem",
+            CSS "ul" {
+                margin = 0,
+                padding = 0,
+            },
+            CSS "li" {
+                display = "inline-block",
+                font_style = "italic",
+            }
+        },
         CSS "#context" {
             border_left = "2px solid gray",
             padding_left = 5,
@@ -378,12 +427,22 @@ return LAYOUT {
             display = "flex",
             justify_content = "space-between",
         },
-        CSS ".thread-nav" {
-            text_align = "right",
-            width = "100%",
-            CSS "> *" {
-                margin_right = 5
-            }
+        CSS "#back-to-top" {
+            font_size = "1.8em",
+            text_size_adjust = "none",
+            position = "fixed",
+            bottom = 10,
+            right = 10,
+            text_align = "center",
+            CSS "a" {
+                background = "#6419",
+                color = LAYOUT.style.textColor, text_decoration = "none",
+                width = "1.2em",
+                height = "1.2em",
+                display = "flex",
+                align_items = "center",
+                justify_content = "center",
+            },
         },
         CSS "#floating-nav" {
             padding = 3,
@@ -403,13 +462,9 @@ return LAYOUT {
             }
         },
         CSS "#footer-notice" {
+            display = "inline-block",
             padding = 2,
             font_size = ".7rem",
-            margin_top = 20,
-            text_align = "right",
-            position = "fixed",
-            bottom = 0,
-            right = 0,
             CSS "i" { background = LAYOUT.style.bgColor },
         },
 
@@ -423,28 +478,58 @@ return LAYOUT {
             display = "inline-block",
         },
         CSS ".comment-num" {
-            color="#777",
-            font_size=".5em",
-            position="absolute",
-            top="-0px",
-            right="-0px",
+            color = "#777",
+            font_size = ".5em",
+            position = "absolute",
+            top = "-0px",
+            right = "-0px",
+        },
+        CSS "pre code" {
+            white_space = "break-spaces",
+            text_wrap = "nowrap !important",
+        },
+        CSS ".green-text" {
+            color = "#b5bd68",
         },
     },
+
+    SCRIPT { src = "item.js" },
 
 
     commentCount > 10 and DIV {
         id = "top-commenters",
         "Most active commenters",
         UL {
-            Xt.map(topCommenters, function(entry)
-                return LI { "slacker" .. userAlias[entry[1]], "(", entry[2], ")" }
+            Xt.mapSlice(1, 10, topCommenters, function(entry)
+                return LI { entry[1], "(", entry[2], ")" }
+            end)
+        },
+    },
+
+    BR,
+
+    DIV {
+        id = "most-popular",
+        "Popular/hot comments",
+        UL {
+            Xt.mapSlice(1, 15, replyTally, function(entry)
+                return LI {
+                    class = "reply-post-link-container",
+                    A { class = "reply post-link" .. (deadPosts[tostring(entry.id)] and " dead" or ""),
+                        href = "#item-" .. entry.id,
+                        ">>" .. tostring(entry.id)
+                    },
+                    A { class = "post-link-hash" .. (deadPosts[tostring(entry.id)] and " dead" or ""),
+                        href = "#item-" .. entry.id,
+                        " #",
+                    }
+                }
             end),
         },
     },
 
-
     op and op.Type == "comment" and DIV {
-        A { href = "/item?id=" .. commentChain[1].ID, "←back to thread" },
+        A { href = "/item?id=" .. commentChain[1].ID .. "#item-" .. op.ID, "←back to thread" },
         BR,
         BR,
 
@@ -463,6 +548,7 @@ return LAYOUT {
         },
     },
 
+
     DIV {
         id = "thread",
         list
@@ -473,19 +559,12 @@ return LAYOUT {
         EM "(no comments)",
     },
 
-
-    commentCount > 5 and DIV {
-        id = "bottom",
+    DIV {
+        id = "back-to-top",
         class = "thread-nav",
-        SPAN { "[", A { href = "#item-" .. op.ID, "top" }, "]" },
+        title = "back to top",
+        SPAN { A {  href = "#site-nav", " ↑ " }, },
     },
-
-    --DIV {
-    --    id = "floating-nav",
-    --    A { href = "#bottom", "←back" },
-    --    SPAN " ",
-    --    A { href = "#bottom", "forward→" },
-    --},
 
     firstComment and firstComment.FetchTime > 0 and DIV {
         id = "footer-notice",
@@ -499,5 +578,7 @@ return LAYOUT {
         }
     },
 
-    SCRIPT { src = "item.js" },
+    DIV {
+        id = "bottom",
+    }
 }

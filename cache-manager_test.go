@@ -7,7 +7,7 @@ import (
 )
 
 func TestNextUpdate(t *testing.T) {
-	cm := NewCacheManager()
+	cm := NewCacheManager(".")
 	cm.LastUpdate = time.Date(2024, time.January, 5 /*time:*/, 8, 23, 0, 0, time.Local).Unix()
 	fmt.Printf("%v -> %v\n", time.Unix(cm.LastUpdate, 0), time.Unix(cm.GetNextUpdate(), 0))
 

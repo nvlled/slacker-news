@@ -2,7 +2,7 @@ local siteName = "slacker news"
 
 local feed     = form:Get("feed") or ""
 local reqpath  = request.URL.Path
-local isHome = reqpath == "/" or reqpath == "/index"
+local isHome   = reqpath == "/" or reqpath == "/index"
 
 local style    = {
     bgColor = "#1d1f21 none",
@@ -21,9 +21,9 @@ local function LAYOUT(args)
             display = "flex",
             align_items = "center",
             column_gap = 15,
-            CSS "#site-menu" {
-                flex_grow = "1",
-            },
+            CSS "#site-nav-spacing" {
+                flex_grow="1",
+            }
         },
         CSS "#site-logo" {
             padding = "5px 10px",
@@ -39,6 +39,18 @@ local function LAYOUT(args)
             font_weight = "800",
             text_decoration = "none",
             color = "inherit",
+        },
+        CSS "#site-menu-container" {
+            display = "flex",
+            justify_content = "center",
+        },
+        CSS "#site-menu" {
+            margin = 0,
+        },
+        CSS "#site-menu" {
+            ["@media"] = "(max-width: 1000px)",
+            margin = 0,
+            margin_bottom = "1.6em",
         },
         CSS "#site-menu, #account-info" {
             display = "flex",
@@ -67,8 +79,10 @@ local function LAYOUT(args)
         },
         CSS "html" {
             font_size = "100%",
+            overflow_x="hidden",
         },
         CSS "body" {
+            overflow_x="hidden",
             background = style.bgColor,
             color = style.textColor,
             text_size_adjust = "none",
@@ -77,7 +91,7 @@ local function LAYOUT(args)
             margin = "auto",
             width = "100%",
             font_size = "100%",
-            max_width = "40em !important",
+            max_width = "45em !important",
         },
 
         CSS_MEDIA '(max-width: 900px)' {
@@ -92,9 +106,6 @@ local function LAYOUT(args)
             },
             CSS "#wrapper" {
                 max_width = "unset !important",
-            },
-            CSS "#site-name, #site-menu" {
-                display = "none"
             },
         },
 
@@ -114,21 +125,24 @@ local function LAYOUT(args)
 
     })
 
-    local menu = UL {
-        id = "site-menu",
+    local menu = DIV {
+        id = "site-menu-container",
+        UL {
+            id = "site-menu",
 
-        LI ^ A { class = ((isHome and feed == "") or feed == "top") and "selected" or "", href = "/", "/top/" },
-        LI ^ A { class = feed == "new" and "selected" or "", href = "/?feed=new", "/new/" },
-        LI ^ A { class = feed == "best" and "selected" or "", href = "/?feed=best", "/best/" },
-        LI ^ A { class = feed == "ask" and "selected" or "", href = "/?feed=ask", "/ask/" },
-        LI ^ A { class = feed == "show" and "selected" or "", href = "/?feed=show", "/show/" },
-        LI ^ A { class = feed == "job" and "selected" or "", href = "/?feed=job", "/job/" },
+            LI ^ A { class = ((isHome and feed == "") or feed == "top") and "selected" or "", href = "/", "/top/" },
+            LI ^ A { class = feed == "new" and "selected" or "", href = "/?feed=new", "/new/" },
+            LI ^ A { class = feed == "best" and "selected" or "", href = "/?feed=best", "/best/" },
+            LI ^ A { class = feed == "ask" and "selected" or "", href = "/?feed=ask", "/ask/" },
+            LI ^ A { class = feed == "show" and "selected" or "", href = "/?feed=show", "/show/" },
+            LI ^ A { class = feed == "job" and "selected" or "", href = "/?feed=job", "/job/" },
+        }
     }
 
     local account = DIV {
         DIV {
             id = "account-info",
-            not user and LI ^ A { href = "/login", "login" }
+            not user and LI ^ A { href = "#/login", "login" }
             or FRAGMENT {
                 LI ^ A { href = "/user?id=" .. user.ID, user.Username },
                 LI ^ A { href = "logout", "logout" },
@@ -145,7 +159,7 @@ local function LAYOUT(args)
                 A { href = "/", "^" }
             },
             A { id = "site-name", href = "/", siteName },
-            menu,
+            DIV { id = "site-nav-spacing" },
             account,
         },
     }
@@ -185,10 +199,12 @@ window.addEventListener("unload", function() { evtSource.close(); })
         },
 
         BODY {
+            menu,
             navigation,
             contents,
+            BR,
+            BR,
         },
-
     }
 end
 

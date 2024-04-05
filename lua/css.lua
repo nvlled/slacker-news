@@ -19,6 +19,40 @@ local function sortTable(t)
     return result
 end
 
+local function cssPrint(ruleset)
+    local n = #ruleset
+
+    for _, rule in ipairs(ruleset) do
+        if not rule or rule.selector == "" or ext.len(rule.declarations) == 0 then
+            goto continue
+        end
+
+        local indent = ""
+        if rule.mediaQuery then
+            indent = "  "
+            printer("@media ", rule.mediaQuery, "{\n")
+        end
+
+        printer(indent, trim(rule.selector), " {\n")
+
+        for _, e in ipairs(sortTable(rule.declarations)) do
+            local decl = table.concat { indent, "  ", e.k, ": ", e.v, ";\n" }
+            printer(decl)
+        end
+
+        printer(indent)
+        printer("}\n")
+
+        if rule.mediaQuery then
+            printer("}\n")
+        end
+
+        ::continue::
+    end
+
+    printer("")
+end
+
 local function cssToString(ruleset)
     local buffer = {}
     local n = #ruleset
@@ -55,6 +89,17 @@ local function cssToString(ruleset)
     return table.concat(buffer, "")
 end
 
+local function mediaPrint(media)
+    printer("@media ", media.types, " {\n")
+    for _, ruleset in ipairs(media.rulesets) do
+        printer(tostring(ruleset), "\n")
+    end
+
+    printer(
+        "}"
+    )
+end
+
 local function mediaToString(media)
     local buffer = {}
     for _, ruleset in ipairs(media.rulesets) do
@@ -66,13 +111,18 @@ local function mediaToString(media)
     }
 end
 
-local cssMeta = {
-    __tostring = cssToString
+local cssMeta, cssMediaMeta
+cssMeta = {
+    print = cssPrint,
+    __tostring = cssToString,
 }
+cssMeta.__index = cssMeta
 
-local cssMediaMeta = {
-    __tostring = mediaToString
+cssMediaMeta = {
+    print = mediaPrint,
+    __tostring = mediaToString,
 }
+cssMediaMeta.__index = cssMediaMeta
 
 
 local function appendSelector(parent, child, nospace)
