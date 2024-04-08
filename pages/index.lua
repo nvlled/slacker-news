@@ -58,5 +58,5 @@ return LAYOUT {
         start = (page - 1) * pageSize + 1,
         list
     },
-    hasMore and A { href = "/index?page=" .. page + 1, "more" }
+    hasMore and A { href = "/index?feed=" .. feed  .. "&page=" .. page + 1 , "more" }
 }

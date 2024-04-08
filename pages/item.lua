@@ -6,7 +6,6 @@ local id = tonumber(form:Get("id"))
 local items, err = go:GetThread(id)
 local timeEnd = go:UnixMilli()
 
-
 if not Xt.isEmptyString(err) then
     return LAYOUT {
         H1 "error: failed to fetch data",
@@ -17,8 +16,6 @@ end
 local op
 local list = {}
 local deadPosts = {}
-local userAlias = {}
-local userAliasID = 0
 local kidIDs = {}
 local commentTally = {}
 local replyTally = {}
@@ -31,11 +28,6 @@ for i, item in items() do
     end
     if (i == 1 and item.Type == "comment") or i == 2 then
         firstComment = item
-    end
-
-    if not userAlias[item.By] then
-        userAliasID = userAliasID + 1
-        userAlias[item.By] = userAliasID
     end
 
     local id = tostring(item.ID)
@@ -79,11 +71,6 @@ if op and op.Type == "comment" and op.Parent then
     for _, item in chain() do
         if kidIDs[id] then
             goto continue
-        end
-
-        if not userAlias[item.By] then
-            userAliasID = userAliasID + 1
-            userAlias[item.By] = userAliasID
         end
 
         local id = tostring(item.ID)
@@ -144,9 +131,13 @@ local function renderOP(item)
         DIV {
             class = "op-details",
             SPAN { item.Score, " points" },
-            A { class = "username", href = hnBaseURL .. "/user?id=" .. item.By, " ", "slacker" .. (userAlias[item.By] or "") },
+            A { class = "username", href = hnBaseURL .. "/user?id=" .. item.By, " ", item.By },
             SPAN { " | ", commentCount, " comments | ", },
             SPAN { class = "post-datetime", go:FormatTime(item.Time) },
+            SPAN " | ",
+            "HN request time: ",
+            (timeEnd - timeStart) / 1000,
+            "s",
             SPAN " | ",
             A { class = "source", href = hnBaseURL .. "/item?id=" .. item.ID, "source" },
             commentCount > 5 and FRAGMENT {
@@ -154,22 +145,28 @@ local function renderOP(item)
                 SPAN " | ",
                 SPAN { A { href = "#bottom", "bottom" }, },
             },
-            SPAN " | ",
-            "HN request time: ",
-            (timeEnd - timeStart) / 1000,
-            "s",
         },
         item.Text and DIV {
             __noHTMLEscape = true,
-            BR,
+            not Xt.isEmptyString(item.Text) and BR,
             item.Text
         },
-        BR,
+        DIV { id = "post-footer" },
     }
 end
 
 local function renderItem(item, num)
     local replies = kidIDs[tostring(item.ID)] or {}
+    local parentLinkSuffix = ""
+    if op then
+    if (item.Parent == op.ID and op.Type == "story") or (commentChain[1] and item.Parent == commentChain[1].ID) then
+        parentLinkSuffix = " (OP)"
+    elseif item.Parent == op.ID and op.Type == "comment" then
+        parentLinkSuffix = " (TP)"
+    end
+end
+
+
     return DIV {
         id = "item-" .. item.ID,
         class = 'post' .. (item.Dead and ' dead' or ''),
@@ -203,7 +200,7 @@ local function renderItem(item, num)
             A {
                 class = "post-link parent", href = "#item-" .. item.Parent,
                 --data_id = item.ID,
-                ">>" .. item.Parent, (op and item.Parent == op.ID and op.type == "story" and " (OP)" or nil)
+                ">>" .. item.Parent, parentLinkSuffix
             },
             A { class = "post-link-hash" .. (deadPosts[tostring(item.Parent)] and " dead" or ""),
                 href = "#item-" .. item.Parent,
@@ -269,7 +266,7 @@ table.insert(list, 2, DIV {
 
 
 return LAYOUT {
-    title = op and op.title,
+    title = #commentChain > 0 and commentChain[1].Title or (op and op.Title),
     style = {
         CSS_MEDIA '(orientation: portrait)' {
             CSS ".post.popup" {
@@ -508,11 +505,11 @@ return LAYOUT {
 
     BR,
 
-    DIV {
+    #replyTally > 0 and DIV {
         id = "most-popular",
         "Popular/hot comments",
         UL {
-            Xt.mapSlice(1, 15, replyTally, function(entry)
+            Xt.mapSlice(1, 20, replyTally, function(entry)
                 return LI {
                     class = "reply-post-link-container",
                     A { class = "reply post-link" .. (deadPosts[tostring(entry.id)] and " dead" or ""),
@@ -534,15 +531,15 @@ return LAYOUT {
         BR,
 
         DIV {
+            renderOP(commentChain[1]),
+        },
+
+        #commentChain > 1 and DIV {
             id = "context",
             DETAILS {
                 SUMMARY { "Show context", },
-                Xt.map(commentChain, function(item)
-                    if item.Type == "story" then
-                        return renderOP(item)
-                    else
-                        return renderItem(item)
-                    end
+                Xt.mapSlice(2, #commentChain, commentChain, function(item)
+                    return renderItem(item)
                 end)
             },
         },
@@ -563,7 +560,7 @@ return LAYOUT {
         id = "back-to-top",
         class = "thread-nav",
         title = "back to top",
-        SPAN { A {  href = "#site-nav", " ↑ " }, },
+        SPAN { A { href = "#site-nav", " ↑ " }, },
     },
 
     firstComment and firstComment.FetchTime > 0 and DIV {

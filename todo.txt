@@ -1,5 +1,3 @@
-- fix OP date and username
-- always show OP
 - show OP title on subthread page
 
 - uhh, cache still gets deleted too early on fly.io instance

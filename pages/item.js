@@ -113,7 +113,7 @@ function setupLink(link) {
                 const topOffset = (linkRect.top + linkRect.height / 2) / winH
                 const leftOffset = (linkRect.left + linkRect.height / 2) / winW
 
-                popup.style.width = postRect.width +"px"; // the fix
+                popup.style.width = postRect.width + "px"; // the fix
 
                 let left = 0;
                 let top = 0;
@@ -197,8 +197,7 @@ function setupGreenTexts(post) {
     const postBody = post.querySelector(".post-body");
     if (!postBody) return;
     for (let node of postBody.childNodes) {
-        if (node.nodeType == Element.TEXT_NODE) {
-
+        if (node.tagName !== "P" && node.tagName !== "PRE") {
             const p = document.createElement("p");
             const nodes = [];
             let current = node;
@@ -211,7 +210,6 @@ function setupGreenTexts(post) {
                 current = current.nextSibling;
             }
             if (nodes.length > 0) {
-                if (post.id == "item-39920097") console.log(node);
                 postBody.replaceChild(p, node);
                 for (const elem of nodes) {
                     p.appendChild(elem);
@@ -262,7 +260,6 @@ const observer = new MutationObserver(function(mutations) {
             if (node.nodeType != Element.ELEMENT_NODE) continue;
 
             if (node.classList.contains("post") && !node.classList.contains("popup")) {
-                console.log("huh", node.id)
                 setupNode(node);
             } else if (node.classList.contains("post-link")) {
                 setupLink(node);
