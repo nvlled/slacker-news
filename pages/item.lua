@@ -34,7 +34,7 @@ for i, item in items() do
     kidIDs[id] = {}
 
 
-    if item.Dead or not item.By or not item.Text or item.Text == "" or item.Text == "" then
+    if item.Dead or not item.By or (not item.Text and op ~= item)  then
         deadPosts[tostring(item.ID)] = true
     else
         commentCount = commentCount + 1
@@ -159,12 +159,12 @@ local function renderItem(item, num)
     local replies = kidIDs[tostring(item.ID)] or {}
     local parentLinkSuffix = ""
     if op then
-    if (item.Parent == op.ID and op.Type == "story") or (commentChain[1] and item.Parent == commentChain[1].ID) then
-        parentLinkSuffix = " (OP)"
-    elseif item.Parent == op.ID and op.Type == "comment" then
-        parentLinkSuffix = " (TP)"
+        if (item.Parent == op.ID and op.Type == "story") or (commentChain[1] and item.Parent == commentChain[1].ID) then
+            parentLinkSuffix = " (OP)"
+        elseif item.Parent == op.ID and op.Type == "comment" then
+            parentLinkSuffix = " (TP)"
+        end
     end
-end
 
 
     return DIV {
@@ -198,7 +198,7 @@ end
         },
         item.Parent and DIV {
             A {
-                class = "post-link parent", href = "#item-" .. item.Parent,
+                class = "post-link parent " .. (deadPosts[tostring(item.Parent)] and " dead" or ""), href = "#item-" .. item.Parent,
                 --data_id = item.ID,
                 ">>" .. item.Parent, parentLinkSuffix
             },

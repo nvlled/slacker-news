@@ -22,7 +22,7 @@ var embeddedFiles embed.FS
 func main() {
 	storageDir := "."
 	if os.Getenv("FLYIO") != "" {
-		storageDir = "/data"
+		storageDir = "/tmp"
 		hn.CacheDir = path.Join(storageDir, hn.CacheDir)
 	}
 	log.Printf("using storage dir: %v", storageDir)
